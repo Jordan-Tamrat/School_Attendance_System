@@ -5,7 +5,6 @@ import { generateQRCode } from "@/lib/qr";
 import { z } from "zod";
 
 const StudentSchema = z.object({
-  studentNumber: z.string().min(1),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   classId: z.string().uuid(),
@@ -17,6 +16,40 @@ const StudentSchema = z.object({
   address: z.string().optional(),
   photoUrl: z.string().min(1, "Student photo is required"),
 });
+
+const EditSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  classId: z.string().uuid(),
+  dateOfBirth: z.string().optional(),
+  gender: z.string().optional(),
+  parentPhone: z.string()
+    .regex(/^\+251[0-9]{9}$/, "Phone must be in Ethiopian format: +251 followed by 9 digits"),
+  parentEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  address: z.string().optional(),
+  photoUrl: z.string().min(1, "Student photo is required"),
+  isActive: z.boolean().optional(),
+});
+
+function gregorianToEthiopian(gregorianYear: number): number {
+  // Ethiopian calendar is ~7-8 years behind Gregorian.
+  // Exact offset: Ethiopian New Year falls on Sep 11 (or 12 in leap year).
+  const now = new Date();
+  const afterNewYear = now.getMonth() >= 8 && now.getDate() >= 11; // Sep = month 8 (0-indexed)
+  return gregorianYear - (afterNewYear ? 7 : 8);
+}
+
+async function generateStudentNumber(): Promise<string> {
+  const settings = await prisma.schoolSettings.findUnique({ where: { id: "default" } });
+  const code = settings?.schoolCode ?? "SCH";
+  const ethYear = gregorianToEthiopian(new Date().getFullYear());
+
+  // Count all students ever registered (sequential across all years)
+  const count = await prisma.student.count();
+  const seq = String(count + 1).padStart(3, "0");
+
+  return `${code}/${seq}/${ethYear}`;
+}
 
 export async function GET(req: NextRequest) {
   const { error, session } = await requireAuth();
@@ -65,25 +98,15 @@ export async function POST(req: NextRequest) {
   }
 
   const data = parsed.data;
+  const studentNumber = await generateStudentNumber();
 
-  const exists = await prisma.student.findUnique({
-    where: { studentNumber: data.studentNumber },
-  });
-  if (exists) {
-    return NextResponse.json(
-      { error: "Student number already exists" },
-      { status: 409 }
-    );
-  }
-
-  // Generate a temporary ID for QR token, then update
   const tempId = crypto.randomUUID();
   const { qrCodeData, qrCodeImage } = await generateQRCode(tempId);
 
   const student = await prisma.student.create({
     data: {
       id: tempId,
-      studentNumber: data.studentNumber,
+      studentNumber,
       firstName: data.firstName,
       lastName: data.lastName,
       classId: data.classId,

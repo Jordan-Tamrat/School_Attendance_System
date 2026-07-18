@@ -5,6 +5,7 @@ import { Save, Settings, CheckCircle } from "lucide-react";
 
 interface SchoolSettings {
   schoolName: string;
+  schoolCode: string;
   schoolStartTime: string;
   lateThresholdMin: number;
 }
@@ -12,6 +13,7 @@ interface SchoolSettings {
 export default function SettingsPage() {
   const [form, setForm] = useState<SchoolSettings>({
     schoolName: "",
+    schoolCode: "",
     schoolStartTime: "07:30",
     lateThresholdMin: 15,
   });
@@ -26,6 +28,7 @@ export default function SettingsPage() {
       .then((data) => {
         setForm({
           schoolName: data.schoolName,
+          schoolCode: data.schoolCode,
           schoolStartTime: data.schoolStartTime,
           lateThresholdMin: data.lateThresholdMin,
         });
@@ -99,11 +102,31 @@ export default function SettingsPage() {
               <label className="label">School Name *</label>
               <input
                 value={form.schoolName}
-                onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  const derived = name.split(" ").filter(Boolean).map((w) => w[0].toUpperCase()).join("");
+                  setForm({ ...form, schoolName: name, schoolCode: derived });
+                }}
                 required
                 placeholder="e.g. Springfield High School"
                 className="input"
               />
+            </div>
+
+            <div>
+              <label className="label">School Code *</label>
+              <input
+                value={form.schoolCode}
+                onChange={(e) => setForm({ ...form, schoolCode: e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6) })}
+                required
+                placeholder="e.g. SHS"
+                className="input"
+                style={{ width: "auto", minWidth: 120, fontFamily: "monospace", letterSpacing: 2 }}
+              />
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                Auto-derived from school name initials. Student IDs will be formatted:{" "}
+                <strong style={{ fontFamily: "monospace" }}>{form.schoolCode || "CODE"}/{String(1).padStart(3,"0")}/{new Date().getFullYear() - (new Date().getMonth() >= 8 && new Date().getDate() >= 11 ? 7 : 8)}</strong>
+              </p>
             </div>
 
             <div>

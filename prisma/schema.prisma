@@ -101,8 +101,9 @@ model ScanException {
 model SchoolSettings {
   id               String   @id @default("default")
   schoolName       String   @default("My School")
-  lateThresholdMin Int      @default(15) // minutes after school start = late
-  schoolStartTime  String   @default("07:30") // HH:mm 24h format
+  schoolCode       String   @default("MS")  // auto-derived from school name initials, overridable
+  lateThresholdMin Int      @default(15)
+  schoolStartTime  String   @default("07:30")
   updatedAt        DateTime @updatedAt
 }
 
