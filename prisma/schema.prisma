@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  fullName     String
+  role         Role
+  passwordHash String
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLogin    DateTime?
+
+  taughtClass        Class?
+  attendanceRecorded AttendanceRecord[] @relation("RecordedBy")
+  exceptionsLogged   ScanException[]    @relation("ScannedBy")
+  exceptionsResolved ScanException[]    @relation("ResolvedBy")
+  studentsCreated    Student[]
+}
+
+model Class {
+  id           String   @id @default(uuid())
+  grade        String
+  section      String
+  academicYear String
+  teacherId    String?  @unique
+  teacher      User?    @relation(fields: [teacherId], references: [id])
+
+  students    Student[]
+  attendance  AttendanceRecord[]
+
+  @@unique([grade, section, academicYear])
+}
+
+model Student {
+  id            String   @id @default(uuid())
+  studentNumber String   @unique
+  firstName     String
+  lastName      String
+  dateOfBirth   DateTime?
+  gender        String?
+  photoUrl      String?
+  qrCodeData    String   @unique
+  qrCodeImage   String?  @db.Text
+  classId       String
+  class         Class    @relation(fields: [classId], references: [id])
+  parentPhone   String?
+  parentEmail   String?
+  address       String?
+  enrollmentDate DateTime @default(now())
+  isActive      Boolean  @default(true)
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+
+  attendance AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id              String          @id @default(uuid())
+  studentId       String
+  student         Student         @relation(fields: [studentId], references: [id])
+  classId         String
+  class           Class           @relation(fields: [classId], references: [id])
+  date            DateTime        @db.Date
+  checkInTime     DateTime?
+  status          AttendanceStatus
+  entryMethod     EntryMethod
+  recordedById    String
+  recordedBy      User            @relation("RecordedBy", fields: [recordedById], references: [id])
+  auditNote       String?
+  permissionNote  String?
+  clientTimestamp DateTime?
+  syncedAt        DateTime?
+  createdAt       DateTime        @default(now())
+
+  @@unique([studentId, date])
+  @@index([date])
+  @@index([classId])
+}
+
+model ScanException {
+  id            String        @id @default(uuid())
+  qrCodeData    String
+  scannedById   String?
+  scannedBy     User?         @relation("ScannedBy", fields: [scannedById], references: [id])
+  scanTime      DateTime      @default(now())
+  exceptionType ExceptionType
+  resolved      Boolean       @default(false)
+  resolvedById  String?
+  resolvedBy    User?         @relation("ResolvedBy", fields: [resolvedById], references: [id])
+  resolvedAt    DateTime?
+  notes         String?
+}
+
+model SchoolSettings {
+  id               String   @id @default("default")
+  schoolName       String   @default("My School")
+  lateThresholdMin Int      @default(15) // minutes after school start = late
+  schoolStartTime  String   @default("07:30") // HH:mm 24h format
+  updatedAt        DateTime @updatedAt
+}
+
+enum Role {
+  admin
+  teacher
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+  excused
+  permission
+}
+
+enum EntryMethod {
+  scan
+  manual
+}
+
+enum ExceptionType {
+  duplicate_scan
+  unknown_qr
+  inactive_student
+}
