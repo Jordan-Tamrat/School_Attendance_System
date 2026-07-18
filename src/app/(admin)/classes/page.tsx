@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, X, Trash2, Users, GraduationCap, UserCheck } from "lucide-react";
+import { Toast, useToast } from "@/components/Toast";
 
 interface Teacher {
   id: string;
@@ -27,6 +28,7 @@ export default function ClassesPage() {
   const [loading, setLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const { toast, show: showToast, hide: hideToast } = useToast();
   const [form, setForm] = useState({
     grade: "",
     section: "",
@@ -64,6 +66,7 @@ export default function ClassesPage() {
       setShowForm(false);
       setForm({ grade: "", section: "", academicYear: CURRENT_YEAR, teacherId: "" });
       fetchClasses();
+      showToast("Class created successfully");
     } else {
       setError(data.error ?? "Failed to create class");
     }
@@ -79,6 +82,7 @@ export default function ClassesPage() {
     if (res.ok) {
       setDeleteId(null);
       fetchClasses();
+      showToast("Class deleted");
     } else {
       setError(data.error ?? "Failed to delete");
     }
@@ -336,6 +340,7 @@ export default function ClassesPage() {
             </div>
           ))
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   );
 }

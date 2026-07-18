@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { UserPlus, X, Shield, GraduationCap, CheckCircle, Clock, Eye, EyeOff } from "lucide-react";
+import { Toast, useToast } from "@/components/Toast";
 
 interface User {
   id: string;
@@ -19,6 +20,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const { toast, show: showToast, hide: hideToast } = useToast();
   const [form, setForm] = useState({
     username: "",
     fullName: "",
@@ -50,6 +52,7 @@ export default function UsersPage() {
       setShowForm(false);
       setForm({ username: "", fullName: "", role: "teacher", password: "" });
       fetchUsers();
+      showToast("Staff account created successfully");
     } else {
       setError(data.error?.fieldErrors
         ? Object.values(data.error.fieldErrors).flat().join(", ")
@@ -240,6 +243,7 @@ export default function UsersPage() {
         bg="var(--success-light)"
         users={teachers}
       />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   );
 }

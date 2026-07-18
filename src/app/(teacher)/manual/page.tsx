@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, CheckCircle, User, X } from "lucide-react";
+import { Search, User, X } from "lucide-react";
+import { Toast, useToast } from "@/components/Toast";
 
 interface Student {
   id: string;
@@ -26,8 +27,8 @@ export default function ManualEntryPage() {
   const [auditNote, setAuditNote] = useState("");
   const [permissionNote, setPermissionNote] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const { toast, show: showToast, hide: hideToast } = useToast();
 
   async function searchStudents() {
     if (!search.trim()) return;
@@ -47,7 +48,7 @@ export default function ManualEntryPage() {
     const data = await res.json();
     setLoading(false);
     if (res.ok) {
-      setSuccess(`${selected.firstName} ${selected.lastName} marked as ${status}`);
+      showToast(`${selected.firstName} ${selected.lastName} marked as ${status}`);
       setSelected(null); setAuditNote(""); setPermissionNote(""); setSearch(""); setStudents([]);
     } else {
       setError(data.error?.fieldErrors?.auditNote?.[0] ?? data.error ?? "Failed");
@@ -265,18 +266,8 @@ export default function ManualEntryPage() {
             </div>
           )}
 
-          {success && (
-            <div style={{
-              marginTop: 12, display: "flex", alignItems: "center", gap: 10,
-              background: "var(--success-light)", color: "var(--success-text)",
-              border: "1px solid color-mix(in srgb, var(--success) 25%, transparent)",
-              borderRadius: 10, padding: "14px 18px", fontSize: 14, fontWeight: 500,
-            }}>
-              <CheckCircle size={18} /> {success}
-            </div>
-          )}
-        </div>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   );
 }

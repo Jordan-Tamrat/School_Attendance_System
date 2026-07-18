@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { randomBytes } from "crypto";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(req: NextRequest) {
   const { error } = await requireAuth("admin");
@@ -24,13 +28,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "File must be under 5MB" }, { status: 400 });
   }
 
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const filename = `${randomBytes(12).toString("hex")}.${ext}`;
-  const uploadDir = join(process.cwd(), "public", "uploads");
-
-  await mkdir(uploadDir, { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(join(uploadDir, filename), buffer);
+  const dataUri = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-  return NextResponse.json({ url: `/uploads/${filename}` });
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: "attendance-system/students",
+    transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }],
+  });
+
+  return NextResponse.json({ url: result.secure_url });
 }

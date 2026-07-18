@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import React from "react";
-import { readFile } from "fs/promises";
-import { join } from "path";
 import {
   renderToBuffer,
   Document,
@@ -140,12 +138,19 @@ export async function GET(
   const initials = `${student.firstName[0] ?? ""}${student.lastName[0] ?? ""}`.toUpperCase();
   const ethYear = gregorianToEthiopian(new Date().getFullYear());
 
-  // Read photo as buffer from disk
+  // Fetch photo as buffer — works for both Cloudinary URLs and legacy local paths
   let photoBuffer: Buffer | null = null;
   if (student.photoUrl) {
     try {
-      const filePath = join(process.cwd(), "public", student.photoUrl);
-      photoBuffer = await readFile(filePath);
+      const isAbsolute = student.photoUrl.startsWith("http");
+      if (isAbsolute) {
+        const res = await fetch(student.photoUrl);
+        if (res.ok) photoBuffer = Buffer.from(await res.arrayBuffer());
+      } else {
+        const { readFile } = await import("fs/promises");
+        const { join } = await import("path");
+        photoBuffer = await readFile(join(process.cwd(), "public", student.photoUrl));
+      }
     } catch {
       photoBuffer = null;
     }

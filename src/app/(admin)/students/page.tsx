@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { UserPlus, FileDown, X, Users, Camera, Loader2, AlertCircle, Pencil } from "lucide-react";
+import { Toast, useToast } from "@/components/Toast";
 
 interface Student {
   id: string;
@@ -227,6 +228,7 @@ export default function StudentsPage() {
 
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { toast, show: showToast, hide: hideToast } = useToast();
 
   useEffect(() => {
     fetchStudents();
@@ -313,7 +315,7 @@ export default function StudentsPage() {
     });
     const data = await res.json();
     setRegisterLoading(false);
-    if (res.ok) { setShowRegister(false); fetchStudents(); }
+    if (res.ok) { setShowRegister(false); fetchStudents(); showToast("Student registered successfully"); }
     else {
       setRegisterError(
         data.error?.fieldErrors ? Object.values(data.error.fieldErrors).flat().join(", ") : data.error ?? "Failed"
@@ -333,7 +335,7 @@ export default function StudentsPage() {
     });
     const data = await res.json();
     setEditLoading(false);
-    if (res.ok) { setEditStudent(null); fetchStudents(); }
+    if (res.ok) { setEditStudent(null); fetchStudents(); showToast("Student updated successfully"); }
     else {
       setEditError(
         data.error?.fieldErrors ? Object.values(data.error.fieldErrors).flat().join(", ") : data.error ?? "Failed"
@@ -352,6 +354,9 @@ export default function StudentsPage() {
       a.download = `id-card-${student.studentNumber}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+      showToast(`ID card downloaded for ${student.firstName} ${student.lastName}`);
+    } else {
+      showToast("Failed to download ID card", "error");
     }
     setDownloadingId(null);
   }
@@ -567,6 +572,7 @@ export default function StudentsPage() {
           </table>
         </div>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

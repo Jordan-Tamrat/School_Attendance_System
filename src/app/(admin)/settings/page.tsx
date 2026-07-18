@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Settings, CheckCircle } from "lucide-react";
+import { Save, Settings } from "lucide-react";
+import { Toast, useToast } from "@/components/Toast";
 
 interface SchoolSettings {
   schoolName: string;
@@ -19,8 +20,7 @@ export default function SettingsPage() {
   });
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const { toast, show: showToast, hide: hideToast } = useToast();
 
   useEffect(() => {
     fetch("/api/settings")
@@ -39,9 +39,6 @@ export default function SettingsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setSuccess(false);
-
     const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -51,13 +48,13 @@ export default function SettingsPage() {
     setLoading(false);
 
     if (res.ok) {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      showToast("Settings saved successfully");
     } else {
-      setError(
+      showToast(
         data.error?.fieldErrors
           ? Object.values(data.error.fieldErrors).flat().join(", ")
-          : data.error ?? "Failed to save settings"
+          : data.error ?? "Failed to save settings",
+        "error"
       );
     }
   }
@@ -165,27 +162,6 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            {error && (
-              <div style={{
-                padding: "10px 14px", borderRadius: 8, fontSize: 13,
-                background: "var(--danger-light)", color: "var(--danger-text)",
-                border: "1px solid color-mix(in srgb, var(--danger) 20%, transparent)",
-              }}>
-                {error}
-              </div>
-            )}
-
-            {success && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "10px 14px", borderRadius: 8, fontSize: 13,
-                background: "var(--success-light)", color: "var(--success-text)",
-                border: "1px solid color-mix(in srgb, var(--success) 20%, transparent)",
-              }}>
-                <CheckCircle size={15} /> Settings saved successfully
-              </div>
-            )}
-
             <div style={{ paddingTop: 4 }}>
               <button
                 type="submit"
@@ -200,6 +176,8 @@ export default function SettingsPage() {
           </form>
         </div>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   );
 }
+

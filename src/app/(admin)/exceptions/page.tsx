@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle, ShieldCheck } from "lucide-react";
+import { Toast, useToast } from "@/components/Toast";
 
 interface Exception {
   id: string;
@@ -24,6 +25,7 @@ export default function ExceptionsPage() {
   const [resolving, setResolving] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
+  const { toast, show: showToast, hide: hideToast } = useToast();
 
   useEffect(() => { fetchExceptions(); }, []);
 
@@ -43,6 +45,7 @@ export default function ExceptionsPage() {
     setResolving(null);
     setNote("");
     fetchExceptions();
+    showToast("Exception marked as resolved");
   }
 
   return (
@@ -172,6 +175,7 @@ export default function ExceptionsPage() {
           </div>
         </>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   );
 }

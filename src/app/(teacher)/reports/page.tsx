@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Printer, BarChart2, Search, Edit2, X, CheckCircle } from "lucide-react";
+import { Toast, useToast } from "@/components/Toast";
 
 type ReportType = "daily" | "absent" | "monthly" | "student";
 
@@ -46,6 +47,7 @@ export default function ReportsPage() {
   const [editStatus, setEditStatus] = useState("");
   const [editNote, setEditNote] = useState("");
   const [editLoading, setEditLoading] = useState(false);
+  const { toast, show: showToast, hide: hideToast } = useToast();
 
   async function searchStudents() {
     if (!studentSearch.trim()) return;
@@ -78,6 +80,7 @@ export default function ReportsPage() {
     setEditLoading(false);
     setEditRecord(null);
     fetchReport();
+    showToast("Attendance record updated");
   }
 
   const typeLabels: Record<ReportType, string> = {
@@ -388,6 +391,7 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   );
 }
