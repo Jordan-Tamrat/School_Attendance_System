@@ -4,10 +4,13 @@ import { requireAuth } from "@/lib/api-auth";
 import { z } from "zod";
 
 const UpdateSchema = z.object({
-  status: z.enum(["present", "absent", "late", "excused", "permission"]),
+  status: z.enum(["present", "absent", "late", "permission"]),
   permissionNote: z.string().optional(),
   auditNote: z.string().optional(),
-});
+}).refine(
+  (d) => d.status !== "permission" || (d.permissionNote && d.permissionNote.trim().length > 0),
+  { message: "Permission note is required when status is permission", path: ["permissionNote"] }
+);
 
 export async function PATCH(
   req: NextRequest,

@@ -8,16 +8,15 @@ const ScanSchema = z.object({
   clientTimestamp: z.string().optional(),
 });
 
-async function resolveStatus(): Promise<"present" | "late"> {
+async function resolveStatus(scanTime: Date): Promise<"present" | "late"> {
   const settings = await prisma.schoolSettings.findUnique({ where: { id: "default" } });
   if (!settings) return "present";
 
   const [startHour, startMin] = settings.schoolStartTime.split(":").map(Number);
-  const now = new Date();
-  const schoolStart = new Date();
+  const schoolStart = new Date(scanTime);
   schoolStart.setHours(startHour, startMin, 0, 0);
 
-  const diffMin = (now.getTime() - schoolStart.getTime()) / 60000;
+  const diffMin = (scanTime.getTime() - schoolStart.getTime()) / 60000;
   return diffMin > settings.lateThresholdMin ? "late" : "present";
 }
 
@@ -73,7 +72,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const status = await resolveStatus();
+  // Use clientTimestamp if provided (offline scan) — reflects actual arrival time
+  const scanTime = clientTimestamp ? new Date(clientTimestamp) : new Date();
+  const status = await resolveStatus(scanTime);
 
   const record = await prisma.attendanceRecord.create({
     data: {

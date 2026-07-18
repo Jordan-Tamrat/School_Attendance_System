@@ -29,7 +29,6 @@ const statusColors: Record<string, { bg: string; color: string }> = {
   present:    { bg: "var(--success-light)",  color: "var(--success-text)" },
   late:       { bg: "var(--warning-light)",  color: "var(--warning-text)" },
   absent:     { bg: "var(--danger-light)",   color: "var(--danger-text)" },
-  excused:    { bg: "var(--accent-light)",   color: "var(--accent-text)" },
   permission: { bg: "var(--purple-light)",   color: "var(--purple-text)" },
 };
 
@@ -361,14 +360,17 @@ export default function ReportsPage() {
                   ))}
                 </div>
               </div>
-              {(editStatus === "excused" || editStatus === "permission") && (
+              {(editStatus === "permission") && (
                 <div>
-                  <label className="label">Note</label>
+                  <label className="label">
+                    Permission Note <span style={{ color: "var(--danger)" }}>*</span>
+                  </label>
                   <textarea
                     value={editNote}
                     onChange={(e) => setEditNote(e.target.value)}
+                    required
                     rows={2}
-                    placeholder="Reason for excused/permission..."
+                    placeholder="Reason for permission..."
                     className="input"
                     style={{ resize: "none" }}
                   />

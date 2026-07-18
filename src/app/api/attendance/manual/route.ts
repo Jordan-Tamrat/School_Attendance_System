@@ -5,11 +5,14 @@ import { z } from "zod";
 
 const ManualSchema = z.object({
   studentId: z.string().uuid(),
-  status: z.enum(["present", "absent", "late", "excused", "permission"]),
+  status: z.enum(["present", "absent", "late", "permission"]),
   auditNote: z.string().min(5, "Audit note is required for manual entry"),
   permissionNote: z.string().optional(),
   date: z.string().optional(),
-});
+}).refine(
+  (d) => d.status !== "permission" || (d.permissionNote && d.permissionNote.trim().length > 0),
+  { message: "Permission note is required when status is permission", path: ["permissionNote"] }
+);
 
 export async function POST(req: NextRequest) {
   const { error, session } = await requireAuth();

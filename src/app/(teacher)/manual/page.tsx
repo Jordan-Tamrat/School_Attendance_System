@@ -15,7 +15,6 @@ const statusOptions = [
   { value: "present",    label: "Present",    color: "var(--success-text)",  bg: "var(--success-light)" },
   { value: "late",       label: "Late",       color: "var(--warning-text)",  bg: "var(--warning-light)" },
   { value: "absent",     label: "Absent",     color: "var(--danger-text)",   bg: "var(--danger-light)" },
-  { value: "excused",    label: "Excused",    color: "var(--accent-text)",   bg: "var(--accent-light)" },
   { value: "permission", label: "Permission", color: "var(--purple-text)",   bg: "var(--purple-light)" },
 ];
 
@@ -227,14 +226,17 @@ export default function ManualEntryPage() {
                   />
                 </div>
 
-                {(status === "excused" || status === "permission") && (
+                {(status === "permission") && (
                   <div>
-                    <label className="label">Permission / Excuse Note</label>
+                    <label className="label">
+                      Permission Note <span style={{ color: "var(--danger)" }}>*</span>
+                    </label>
                     <textarea
                       value={permissionNote}
                       onChange={(e) => setPermissionNote(e.target.value)}
+                      required
                       rows={2}
-                      placeholder="Details about the excuse or permission..."
+                      placeholder="Details about the permission..."
                       className="input"
                       style={{ resize: "none", lineHeight: 1.6 }}
                     />

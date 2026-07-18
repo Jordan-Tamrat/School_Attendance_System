@@ -6,9 +6,16 @@ interface QueuedRecord {
   id: string;
   qrCodeData: string;
   clientTimestamp: string;
-  status?: string;
-  entryMethod?: string;
-  auditNote?: string;
+}
+
+async function resolveStatus(scanTime: Date): Promise<"present" | "late"> {
+  const settings = await prisma.schoolSettings.findUnique({ where: { id: "default" } });
+  if (!settings) return "present";
+  const [startHour, startMin] = settings.schoolStartTime.split(":").map(Number);
+  const schoolStart = new Date(scanTime);
+  schoolStart.setHours(startHour, startMin, 0, 0);
+  const diffMin = (scanTime.getTime() - schoolStart.getTime()) / 60000;
+  return diffMin > settings.lateThresholdMin ? "late" : "present";
 }
 
 export async function POST(req: NextRequest) {
@@ -33,8 +40,10 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const date = new Date(record.clientTimestamp);
+      const scanTime = new Date(record.clientTimestamp);
+      const date = new Date(scanTime);
       date.setHours(0, 0, 0, 0);
+      const status = await resolveStatus(scanTime);
 
       await prisma.attendanceRecord.upsert({
         where: { studentId_date: { studentId: student.id, date } },
@@ -43,8 +52,8 @@ export async function POST(req: NextRequest) {
           studentId: student.id,
           classId: student.classId,
           date,
-          checkInTime: new Date(record.clientTimestamp),
-          status: "present",
+          checkInTime: scanTime,
+          status,
           entryMethod: "scan",
           recordedById: session!.user.id,
           clientTimestamp: new Date(record.clientTimestamp),
