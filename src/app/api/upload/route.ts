@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Only JPG, PNG, or WEBP allowed" }, { status: 400 });
   }
 
-  if (file.size > 2 * 1024 * 1024) {
-    return NextResponse.json({ error: "File must be under 2MB" }, { status: 400 });
+  if (file.size > 5 * 1024 * 1024) {
+    return NextResponse.json({ error: "File must be under 5MB" }, { status: 400 });
   }
 
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";

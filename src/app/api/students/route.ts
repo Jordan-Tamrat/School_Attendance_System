@@ -11,10 +11,11 @@ const StudentSchema = z.object({
   classId: z.string().uuid(),
   dateOfBirth: z.string().optional(),
   gender: z.string().optional(),
-  parentPhone: z.string().optional(),
-  parentEmail: z.string().email().optional().or(z.literal("")),
+  parentPhone: z.string()
+    .regex(/^\+251[0-9]{9}$/, "Phone must be in Ethiopian format: +251 followed by 9 digits"),
+  parentEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   address: z.string().optional(),
-  photoUrl: z.string().optional(),
+  photoUrl: z.string().min(1, "Student photo is required"),
 });
 
 export async function GET(req: NextRequest) {

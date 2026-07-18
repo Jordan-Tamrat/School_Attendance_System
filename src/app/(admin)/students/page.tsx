@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { UserPlus, FileDown, X, Users, Camera, Loader2 } from "lucide-react";
+import { UserPlus, FileDown, X, Users, Camera, Loader2, AlertCircle } from "lucide-react";
 
 interface Student {
   id: string;
@@ -32,8 +32,12 @@ export default function StudentsPage() {
   const [error, setError] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [phone, setPhone] = useState("+251");
+  const [phoneError, setPhoneError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -49,8 +53,13 @@ export default function StudentsPage() {
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPhotoError("");
 
-    // Show preview immediately
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError("Photo must be under 5MB");
+      return;
+    }
+
     setPhotoPreview(URL.createObjectURL(file));
     setUploadingPhoto(true);
 
@@ -63,17 +72,49 @@ export default function StudentsPage() {
     if (res.ok) {
       setPhotoUrl(data.url);
     } else {
-      setError(data.error ?? "Photo upload failed");
+      setPhotoError(data.error ?? "Photo upload failed");
       setPhotoPreview(null);
     }
   }
 
+  function validatePhone(value: string) {
+    if (!/^\+251[0-9]{9}$/.test(value)) {
+      setPhoneError("Must be +251 followed by 9 digits (e.g. +251912345678)");
+      return false;
+    }
+    setPhoneError("");
+    return true;
+  }
+
+  function validateEmail(value: string) {
+    if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setEmailError("Invalid email address");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  }
+
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
     setError("");
+
+    if (!photoUrl) {
+      setPhotoError("Student photo is required");
+      return;
+    }
+    if (!validatePhone(phone)) return;
+
     const form = new FormData(e.currentTarget);
-    const body = { ...Object.fromEntries(form), photoUrl: photoUrl ?? undefined };
+    const email = form.get("parentEmail") as string;
+    if (!validateEmail(email)) return;
+
+    setLoading(true);
+    const body = {
+      ...Object.fromEntries(form),
+      parentPhone: phone,
+      photoUrl,
+    };
 
     const res = await fetch("/api/students", {
       method: "POST",
@@ -84,9 +125,7 @@ export default function StudentsPage() {
     setLoading(false);
 
     if (res.ok) {
-      setShowForm(false);
-      setPhotoPreview(null);
-      setPhotoUrl(null);
+      closeForm();
       fetchStudents();
     } else {
       setError(
@@ -117,6 +156,10 @@ export default function StudentsPage() {
     setError("");
     setPhotoPreview(null);
     setPhotoUrl(null);
+    setPhotoError("");
+    setPhone("+251");
+    setPhoneError("");
+    setEmailError("");
   }
 
   return (
@@ -131,7 +174,6 @@ export default function StudentsPage() {
         </button>
       </div>
 
-      {/* Registration Modal */}
       {showForm && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
@@ -164,57 +206,64 @@ export default function StudentsPage() {
 
             <form onSubmit={handleRegister} style={{ padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
 
-              {/* Photo upload */}
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 4 }}>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    width: 72, height: 72, borderRadius: 14, flexShrink: 0,
-                    background: photoPreview ? "transparent" : "var(--bg-surface-2)",
-                    border: `2px dashed ${photoPreview ? "var(--accent)" : "var(--border-strong)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", overflow: "hidden", position: "relative",
-                    transition: "border-color 0.15s",
-                  }}
-                >
-                  {photoPreview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={photoPreview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <Camera size={22} color="var(--text-muted)" />
-                  )}
-                  {uploadingPhoto && (
-                    <div style={{
-                      position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Loader2 size={20} color="#fff" style={{ animation: "spin 1s linear infinite" }} />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
-                    Student Photo
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
-                    JPG, PNG or WEBP · Max 2MB · Optional
-                  </div>
-                  <button
-                    type="button"
+              {/* Photo upload — mandatory */}
+              <div>
+                <label className="label">
+                  Student Photo <span style={{ color: "var(--danger)" }}>*</span>
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="btn-secondary"
-                    style={{ fontSize: 12, padding: "6px 12px" }}
+                    style={{
+                      width: 80, height: 80, borderRadius: 14, flexShrink: 0,
+                      background: photoPreview ? "transparent" : "var(--bg-surface-2)",
+                      border: `2px dashed ${photoError ? "var(--danger)" : photoPreview ? "var(--accent)" : "var(--border-strong)"}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer", overflow: "hidden", position: "relative",
+                      transition: "border-color 0.15s",
+                    }}
                   >
-                    {photoPreview ? "Change Photo" : "Upload Photo"}
-                  </button>
+                    {photoPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photoPreview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <Camera size={24} color={photoError ? "var(--danger)" : "var(--text-muted)"} />
+                    )}
+                    {uploadingPhoto && (
+                      <div style={{
+                        position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <Loader2 size={20} color="#fff" style={{ animation: "spin 1s linear infinite" }} />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="btn-secondary"
+                      style={{ fontSize: 12, padding: "6px 12px", marginBottom: 6 }}
+                    >
+                      {photoPreview ? "Change Photo" : "Upload Photo"}
+                    </button>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                      JPG, PNG or WEBP · Max 5MB
+                    </div>
+                    {photoError && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: 12, color: "var(--danger-text)" }}>
+                        <AlertCircle size={12} /> {photoError}
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePhotoChange}
+                    style={{ display: "none" }}
+                  />
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handlePhotoChange}
-                  style={{ display: "none" }}
-                />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -259,13 +308,52 @@ export default function StudentsPage() {
               </div>
 
               <div>
-                <label className="label">Parent Phone</label>
-                <input name="parentPhone" type="tel" className="input" placeholder="+1 234 567 8900" />
+                <label className="label">
+                  Parent Phone <span style={{ color: "var(--danger)" }}>*</span>
+                </label>
+                <input
+                  value={phone}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Always keep +251 prefix
+                    if (!val.startsWith("+251")) return;
+                    // Only allow digits after prefix
+                    const suffix = val.slice(4).replace(/\D/g, "").slice(0, 9);
+                    setPhone("+251" + suffix);
+                    setPhoneError("");
+                  }}
+                  onBlur={() => validatePhone(phone)}
+                  className="input"
+                  placeholder="+251912345678"
+                  style={{ borderColor: phoneError ? "var(--danger)" : undefined }}
+                />
+                {phoneError ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: 12, color: "var(--danger-text)" }}>
+                    <AlertCircle size={12} /> {phoneError}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                    Ethiopian format: +251 followed by 9 digits
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="label">Parent Email</label>
-                <input name="parentEmail" type="email" className="input" placeholder="parent@email.com" />
+                <input
+                  name="parentEmail"
+                  type="email"
+                  className="input"
+                  placeholder="parent@email.com"
+                  style={{ borderColor: emailError ? "var(--danger)" : undefined }}
+                  onBlur={(e) => validateEmail(e.target.value)}
+                  onChange={() => setEmailError("")}
+                />
+                {emailError && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: 12, color: "var(--danger-text)" }}>
+                    <AlertCircle size={12} /> {emailError}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -296,7 +384,6 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* Students table */}
       {students.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
           <Users size={40} style={{ margin: "0 auto 12px", opacity: 0.3 }} />

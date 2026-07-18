@@ -19,8 +19,6 @@ const teacherLinks = [
 
 const adminLinks = [
   { href: "/dashboard",  label: "Dashboard",   icon: LayoutDashboard },
-  { href: "/scanner",    label: "Scanner",     icon: QrCode },
-  { href: "/manual",     label: "Manual Entry", icon: PenLine },
   { href: "/reports",    label: "Reports",     icon: BarChart2 },
   { href: "/students",   label: "Students",    icon: Users },
   { href: "/classes",    label: "Classes",     icon: BookOpen },

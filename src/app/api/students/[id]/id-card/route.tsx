@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import React from "react";
+import { readFile } from "fs/promises";
+import { join } from "path";
 import {
   renderToBuffer,
   Document,
@@ -106,18 +108,29 @@ export async function GET(
   if (error) return error;
 
   const { id } = await params;
-  const student = await prisma.student.findUnique({
-    where: { id },
-    include: { class: true },
-  });
+  const [student, settings] = await Promise.all([
+    prisma.student.findUnique({ where: { id }, include: { class: true } }),
+    prisma.schoolSettings.findUnique({ where: { id: "default" } }),
+  ]);
 
   if (!student) {
     return NextResponse.json({ error: "Student not found" }, { status: 404 });
   }
 
+  const schoolName = settings?.schoolName ?? "EduAttend";
   const initials = `${student.firstName[0] ?? ""}${student.lastName[0] ?? ""}`.toUpperCase();
-  const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000";
-  const photoSrc = student.photoUrl ? `${baseUrl}${student.photoUrl}` : null;
+
+  // Read photo as buffer from disk — avoids HTTP fetch issues in PDF renderer
+  let photoBuffer: Buffer | null = null;
+  if (student.photoUrl) {
+    try {
+      const filePath = join(process.cwd(), "public", student.photoUrl);
+      photoBuffer = await readFile(filePath);
+    } catch {
+      photoBuffer = null;
+    }
+  }
+
   const qrSrc = student.qrCodeImage ?? null;
 
   const doc = React.createElement(
@@ -133,7 +146,7 @@ export async function GET(
         React.createElement(
           View,
           null,
-          React.createElement(Text, { style: styles.headerTitle }, "EduAttend"),
+          React.createElement(Text, { style: styles.headerTitle }, schoolName),
           React.createElement(Text, { style: styles.headerSub }, "Student ID Card")
         )
       ),
@@ -142,8 +155,8 @@ export async function GET(
         View,
         { style: styles.body },
         // Photo or initials
-        photoSrc
-          ? React.createElement(Image, { src: photoSrc, style: styles.photo })
+        photoBuffer
+          ? React.createElement(Image, { src: photoBuffer, style: styles.photo })
           : React.createElement(
               View,
               { style: styles.photoPlaceholder },
