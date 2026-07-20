@@ -39,7 +39,7 @@ export default function ManualEntryPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selected) return;
-    setLoading(true); setError(""); setSuccess("");
+    setLoading(true); setError("");
     const res = await fetch("/api/attendance/manual", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -265,7 +265,7 @@ export default function ManualEntryPage() {
               </form>
             </div>
           )}
-
+        </div>
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>

@@ -18,6 +18,14 @@ interface AttendanceRecord {
   recordedBy?: { fullName: string };
 }
 
+interface AbsentStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  studentNumber: string;
+  class: { grade: string; section: string };
+}
+
 interface Student {
   id: string;
   firstName: string;
@@ -41,6 +49,7 @@ export default function ReportsPage() {
   const [studentResults, setStudentResults] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([]);
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
@@ -63,7 +72,13 @@ export default function ReportsPage() {
     if (type === "student" && selectedStudent) params.set("studentId", selectedStudent.id);
     const res = await fetch(`/api/reports?${params}`);
     const data = await res.json();
-    setRecords(Array.isArray(data) ? data : []);
+    if (type === "absent") {
+      setAbsentStudents(Array.isArray(data) ? data : []);
+      setRecords([]);
+    } else {
+      setRecords(Array.isArray(data) ? data : []);
+      setAbsentStudents([]);
+    }
     setLoading(false);
     setGenerated(true);
   }
@@ -111,7 +126,7 @@ export default function ReportsPage() {
               {(["daily", "absent", "monthly", "student"] as ReportType[]).map((t) => (
                 <button
                   key={t}
-                  onClick={() => { setType(t); setGenerated(false); setRecords([]); }}
+                  onClick={() => { setType(t); setGenerated(false); setRecords([]); setAbsentStudents([]); }}
                   style={{
                     padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500,
                     cursor: "pointer", transition: "all 0.15s",
@@ -223,10 +238,41 @@ export default function ReportsPage() {
           <p style={{ fontSize: 14 }}>Select a report type and click Generate</p>
         </div>
       )}
-      {generated && records.length === 0 && !loading && (
+      {generated && records.length === 0 && absentStudents.length === 0 && !loading && (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
           <p style={{ fontSize: 14 }}>No records found for the selected criteria.</p>
         </div>
+      )}
+
+      {/* Absent Students table */}
+      {type === "absent" && absentStudents.length > 0 && (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>
+              {absentStudents.length} student{absentStudents.length !== 1 ? "s" : ""} absent
+            </span>
+          </div>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Student No.</th>
+                  <th>Class</th>
+                </tr>
+              </thead>
+              <tbody>
+                {absentStudents.map((s) => (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 500 }}>{s.firstName} {s.lastName}</td>
+                    <td style={{ color: "var(--text-secondary)" }}>#{s.studentNumber}</td>
+                    <td style={{ color: "var(--text-secondary)" }}>Grade {s.class.grade}-{s.class.section}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Results table */}
