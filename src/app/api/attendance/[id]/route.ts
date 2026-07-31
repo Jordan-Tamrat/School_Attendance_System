@@ -30,6 +30,7 @@ export async function PATCH(
     where: { id },
     data: {
       status: parsed.data.status,
+      entryMethod: "manual",
       permissionNote: parsed.data.permissionNote,
       auditNote: parsed.data.auditNote,
       recordedById: session!.user.id,

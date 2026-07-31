@@ -291,7 +291,6 @@ export default function ReportsPage() {
                   <th>Date</th>
                   <th>Status</th>
                   <th>Method</th>
-                  <th>Recorded By</th>
                   {type === "student" && <th>Note</th>}
                   <th>Update</th>
                 </tr>
@@ -312,7 +311,7 @@ export default function ReportsPage() {
                         </td>
                       )}
                       <td style={{ color: "var(--text-secondary)" }}>
-                        {new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        {new Date(r.date).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })}
                       </td>
                       <td>
                         <span style={{
@@ -326,7 +325,6 @@ export default function ReportsPage() {
                         </span>
                       </td>
                       <td style={{ color: "var(--text-secondary)", textTransform: "capitalize" }}>{r.entryMethod}</td>
-                      <td style={{ color: "var(--text-secondary)" }}>{r.recordedBy?.fullName ?? "—"}</td>
                       {type === "student" && (
                         <td style={{ color: "var(--text-muted)", fontSize: 12, maxWidth: 180 }}>
                           {r.auditNote ?? r.permissionNote ?? "—"}
@@ -376,7 +374,7 @@ export default function ReportsPage() {
                   {editRecord.student
                     ? `${editRecord.student.firstName} ${editRecord.student.lastName}`
                     : "Student"} ·{" "}
-                  {new Date(editRecord.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  {new Date(editRecord.date).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" })}
                 </p>
               </div>
               <button onClick={() => setEditRecord(null)} style={{

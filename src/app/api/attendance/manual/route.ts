@@ -26,7 +26,11 @@ export async function POST(req: NextRequest) {
 
   const { studentId, status, auditNote, permissionNote, date } = parsed.data;
 
-  const targetDate = date ? new Date(date) : new Date();
+  let targetDate = new Date();
+  if (date) {
+    const [y, m, d] = date.split("-").map(Number);
+    targetDate = new Date(y, m - 1, d);
+  }
   targetDate.setHours(0, 0, 0, 0);
 
   const student = await prisma.student.findUnique({ where: { id: studentId } });

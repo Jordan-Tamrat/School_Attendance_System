@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
   const scopedClassId = classId;
 
   if (type === "daily") {
-    const targetDate = new Date(date);
+    const [y, m, d] = date.split("-").map(Number);
+    const targetDate = new Date(y, m - 1, d);
     targetDate.setHours(0, 0, 0, 0);
 
     const records = await prisma.attendanceRecord.findMany({
@@ -35,12 +36,14 @@ export async function GET(req: NextRequest) {
   }
 
   if (type === "absent") {
-    const targetDate = new Date(date);
+    const [y, m, d] = date.split("-").map(Number);
+    const targetDate = new Date(y, m - 1, d);
     targetDate.setHours(0, 0, 0, 0);
 
     const presentIds = await prisma.attendanceRecord.findMany({
       where: {
         date: targetDate,
+        status: { in: ["present", "late", "permission"] },
         ...(scopedClassId ? { classId: scopedClassId } : {}),
       },
       select: { studentId: true },
