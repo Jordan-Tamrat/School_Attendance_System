@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, User, X } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
 
@@ -12,6 +12,12 @@ interface Student {
   class: { grade: string; section: string };
 }
 
+interface Class {
+  id: string;
+  grade: string;
+  section: string;
+}
+
 const statusOptions = [
   { value: "present",    label: "Present",    color: "var(--success-text)",  bg: "var(--success-light)" },
   { value: "late",       label: "Late",       color: "var(--warning-text)",  bg: "var(--warning-light)" },
@@ -21,6 +27,8 @@ const statusOptions = [
 
 export default function ManualEntryPage() {
   const [search, setSearch] = useState("");
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [selected, setSelected] = useState<Student | null>(null);
   const [status, setStatus] = useState("present");
@@ -30,9 +38,23 @@ export default function ManualEntryPage() {
   const [error, setError] = useState("");
   const { toast, show: showToast, hide: hideToast } = useToast();
 
+
+
+  useEffect(() => {
+    fetch("/api/classes").then((r) => r.json()).then(setClasses);
+  }, []);
+
   async function searchStudents() {
-    if (!search.trim()) return;
-    const res = await fetch(`/api/students?search=${encodeURIComponent(search)}`);
+    if (!search.trim() && !selectedClassId) {
+      setStudents([]);
+      return;
+    }
+    
+    let url = "/api/students?";
+    if (search.trim()) url += `search=${encodeURIComponent(search)}&`;
+    if (selectedClassId) url += `classId=${selectedClassId}`;
+    
+    const res = await fetch(url);
     setStudents(await res.json());
   }
 
@@ -71,18 +93,33 @@ export default function ManualEntryPage() {
             <h2 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>
               Find Student
             </h2>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && searchStudents()}
-                placeholder="Name or student number..."
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
                 className="input"
-                style={{ flex: 1 }}
-              />
-              <button onClick={searchStudents} className="btn-primary" style={{ padding: "10px 16px" }}>
-                <Search size={16} />
-              </button>
+              >
+                <option value="">All Classes (School-wide)</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    Grade {cls.grade} — Section {cls.section}
+                  </option>
+                ))}
+              </select>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && searchStudents()}
+                  placeholder="Name or student number..."
+                  className="input"
+                  style={{ flex: 1 }}
+                />
+                <button onClick={searchStudents} className="btn-primary" style={{ padding: "10px 16px" }}>
+                  <Search size={16} />
+                </button>
+              </div>
             </div>
 
             {students.length > 0 && !selected && (
@@ -127,9 +164,9 @@ export default function ManualEntryPage() {
               </div>
             )}
 
-            {students.length === 0 && search && (
+            {students.length === 0 && (search || selectedClassId) && (
               <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", padding: "20px 0" }}>
-                No students found for &quot;{search}&quot;
+                No students found matching your criteria.
               </p>
             )}
           </div>

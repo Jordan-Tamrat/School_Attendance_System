@@ -205,6 +205,9 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [idPreview, setIdPreview] = useState("");
+  
+  const [search, setSearch] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("");
 
   // Register state
   const [showRegister, setShowRegister] = useState(false);
@@ -249,9 +252,19 @@ export default function StudentsPage() {
   }, []);
 
   async function fetchStudents() {
-    const res = await fetch("/api/students");
+    let url = "/api/students?";
+    if (search.trim()) url += `search=${encodeURIComponent(search)}&`;
+    if (selectedClassId) url += `classId=${selectedClassId}`;
+    
+    const res = await fetch(url);
     setStudents(await res.json());
   }
+
+  // Refetch when class filter changes
+  useEffect(() => {
+    fetchStudents();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClassId]);
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -513,6 +526,33 @@ export default function StudentsPage() {
         <button onClick={openRegister} className="btn-primary">
           <UserPlus size={16} /> Register Student
         </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <select
+          value={selectedClassId}
+          onChange={(e) => setSelectedClassId(e.target.value)}
+          className="input"
+          style={{ width: "250px", flexShrink: 0 }}
+        >
+          <option value="">All Classes</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>Grade {c.grade} — Section {c.section}</option>
+          ))}
+        </select>
+        <div style={{ display: "flex", flex: 1, gap: 8, minWidth: "300px" }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && fetchStudents()}
+            placeholder="Search by name or ID number..."
+            className="input"
+            style={{ flex: 1 }}
+          />
+          <button onClick={fetchStudents} className="btn-secondary" style={{ padding: "0 16px" }}>
+            Search
+          </button>
+        </div>
       </div>
 
       {showRegister && modalContent(

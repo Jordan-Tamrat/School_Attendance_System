@@ -7,7 +7,6 @@ const ClassSchema = z.object({
   grade: z.string().min(1),
   section: z.string().min(1),
   academicYear: z.string().min(1),
-  teacherId: z.string().uuid().optional().nullable(),
 });
 
 export async function GET() {
@@ -16,7 +15,6 @@ export async function GET() {
 
   const classes = await prisma.class.findMany({
     include: {
-      teacher: { select: { id: true, fullName: true } },
       _count: { select: { students: { where: { isActive: true } } } },
     },
     orderBy: [{ grade: "asc" }, { section: "asc" }],
@@ -35,22 +33,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { teacherId, ...rest } = parsed.data;
-
-  // A teacher can only be assigned to one class
-  if (teacherId) {
-    const existing = await prisma.class.findFirst({ where: { teacherId } });
-    if (existing) {
-      return NextResponse.json(
-        { error: "This teacher is already assigned to another class" },
-        { status: 409 }
-      );
-    }
-  }
-
   const cls = await prisma.class.create({
-    data: { ...rest, teacherId: teacherId ?? null },
-    include: { teacher: { select: { id: true, fullName: true } } },
+    data: parsed.data,
   });
 
   return NextResponse.json(cls, { status: 201 });

@@ -13,14 +13,7 @@ export async function GET(req: NextRequest) {
   const studentId = searchParams.get("studentId");
   const month = searchParams.get("month"); // format: "2024-11"
 
-  // Scope: teachers only see their class
-  let scopedClassId = classId;
-  if (session!.user.role === "teacher") {
-    const teacherClass = await prisma.class.findFirst({
-      where: { teacherId: session!.user.id },
-    });
-    scopedClassId = teacherClass?.id ?? "none";
-  }
+  const scopedClassId = classId;
 
   if (type === "daily") {
     const targetDate = new Date(date);

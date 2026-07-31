@@ -7,16 +7,10 @@ async function getStats(userId: string, role: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  let classFilter = {};
-  if (role === "teacher") {
-    const cls = await prisma.class.findFirst({ where: { teacherId: userId } });
-    classFilter = cls ? { classId: cls.id } : { classId: "none" };
-  }
-
   const [total, present, late, exceptions] = await Promise.all([
-    prisma.student.count({ where: { isActive: true, ...classFilter } }),
-    prisma.attendanceRecord.count({ where: { date: today, status: "present", ...classFilter } }),
-    prisma.attendanceRecord.count({ where: { date: today, status: "late", ...classFilter } }),
+    prisma.student.count({ where: { isActive: true } }),
+    prisma.attendanceRecord.count({ where: { date: today, status: "present" } }),
+    prisma.attendanceRecord.count({ where: { date: today, status: "late" } }),
     prisma.scanException.count({ where: { resolved: false } }),
   ]);
 

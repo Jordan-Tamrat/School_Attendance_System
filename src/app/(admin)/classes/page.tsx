@@ -4,18 +4,13 @@ import { useEffect, useState } from "react";
 import { Plus, X, Trash2, Users, GraduationCap, UserCheck } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
 
-interface Teacher {
-  id: string;
-  fullName: string;
-  role: string;
-}
+
 
 interface Class {
   id: string;
   grade: string;
   section: string;
   academicYear: string;
-  teacher: { id: string; fullName: string } | null;
   _count: { students: number };
 }
 
@@ -23,7 +18,6 @@ const CURRENT_YEAR = `${new Date().getFullYear()}-${new Date().getFullYear() + 1
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState<Class[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -33,14 +27,10 @@ export default function ClassesPage() {
     grade: "",
     section: "",
     academicYear: CURRENT_YEAR,
-    teacherId: "",
   });
 
   useEffect(() => {
     fetchClasses();
-    fetch("/api/users")
-      .then((r) => r.json())
-      .then((data) => setTeachers(data.filter((u: Teacher) => u.role === "teacher")));
   }, []);
 
   async function fetchClasses() {
@@ -55,16 +45,13 @@ export default function ClassesPage() {
     const res = await fetch("/api/classes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        teacherId: form.teacherId || null,
-      }),
+      body: JSON.stringify(form),
     });
     const data = await res.json();
     setLoading(false);
     if (res.ok) {
       setShowForm(false);
-      setForm({ grade: "", section: "", academicYear: CURRENT_YEAR, teacherId: "" });
+      setForm({ grade: "", section: "", academicYear: CURRENT_YEAR });
       fetchClasses();
       showToast("Class created successfully");
     } else {
@@ -171,22 +158,7 @@ export default function ClassesPage() {
                 />
               </div>
 
-              <div>
-                <label className="label">Assign Teacher (optional)</label>
-                <select
-                  value={form.teacherId}
-                  onChange={(e) => setForm({ ...form, teacherId: e.target.value })}
-                  className="input"
-                >
-                  <option value="">No teacher assigned</option>
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>{t.fullName}</option>
-                  ))}
-                </select>
-                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                  Each teacher can only be assigned to one class
-                </p>
-              </div>
+
 
               {error && (
                 <div style={{
@@ -327,12 +299,7 @@ export default function ClassesPage() {
                         <Users size={13} color="var(--text-muted)" />
                         {cls._count.students} student{cls._count.students !== 1 ? "s" : ""}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--text-secondary)" }}>
-                        <UserCheck size={13} color="var(--text-muted)" />
-                        {cls.teacher ? cls.teacher.fullName : (
-                          <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>No teacher assigned</span>
-                        )}
-                      </div>
+
                     </div>
                   </div>
                 ))}

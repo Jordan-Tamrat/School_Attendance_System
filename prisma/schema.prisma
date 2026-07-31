@@ -16,7 +16,7 @@ model User {
   createdAt    DateTime  @default(now())
   lastLogin    DateTime?
 
-  taughtClass        Class?
+
   attendanceRecorded AttendanceRecord[] @relation("RecordedBy")
   exceptionsLogged   ScanException[]    @relation("ScannedBy")
   exceptionsResolved ScanException[]    @relation("ResolvedBy")
@@ -28,8 +28,7 @@ model Class {
   grade        String
   section      String
   academicYear String
-  teacherId    String?  @unique
-  teacher      User?    @relation(fields: [teacherId], references: [id])
+
 
   students    Student[]
   attendance  AttendanceRecord[]

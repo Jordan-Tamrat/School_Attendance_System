@@ -69,14 +69,7 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  // Teachers only see their assigned class
-  if (session!.user.role === "teacher") {
-    const teacherClass = await prisma.class.findFirst({
-      where: { teacherId: session!.user.id },
-    });
-    if (!teacherClass) return NextResponse.json([]);
-    where.classId = teacherClass.id;
-  }
+
 
   const students = await prisma.student.findMany({
     where,
