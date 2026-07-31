@@ -103,6 +103,9 @@ export async function POST(req: NextRequest) {
   const tempId = crypto.randomUUID();
   const { qrCodeData, qrCodeImage } = await generateQRCode(tempId);
 
+  const expiresAt = new Date();
+  expiresAt.setFullYear(expiresAt.getFullYear() + 3);
+
   const student = await prisma.student.create({
     data: {
       id: tempId,
@@ -117,6 +120,7 @@ export async function POST(req: NextRequest) {
       address: data.address,
       qrCodeData,
       qrCodeImage,
+      qrExpiresAt: expiresAt,
       photoUrl: data.photoUrl ?? null,
       createdById: session!.user.id,
     },

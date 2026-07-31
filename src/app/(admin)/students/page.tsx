@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { UserPlus, FileDown, X, Users, Camera, Loader2, AlertCircle, Pencil } from "lucide-react";
+import { UserPlus, FileDown, X, Users, Camera, Loader2, AlertCircle, Pencil, QrCode, CheckCircle } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
 
 interface Student {
@@ -17,6 +17,7 @@ interface Student {
   dateOfBirth: string | null;
   gender: string | null;
   isActive: boolean;
+  qrExpiresAt: string;
   class: { id: string; grade: string; section: string };
 }
 
@@ -217,6 +218,12 @@ export default function StudentsPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
 
+  // Manage ID state
+  const [manageStudent, setManageStudent] = useState<Student | null>(null);
+  const [revokeReason, setRevokeReason] = useState("lost");
+  const [manageLoading, setManageLoading] = useState(false);
+  const [manageError, setManageError] = useState("");
+
   // Shared photo state (reset per modal)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -340,6 +347,42 @@ export default function StudentsPage() {
       setEditError(
         data.error?.fieldErrors ? Object.values(data.error.fieldErrors).flat().join(", ") : data.error ?? "Failed"
       );
+    }
+  }
+
+  async function handleRevoke() {
+    setManageError("");
+    setManageLoading(true);
+    const res = await fetch(`/api/students/${manageStudent!.id}/revoke`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: revokeReason }),
+    });
+    const data = await res.json();
+    setManageLoading(false);
+    if (res.ok) {
+      setManageStudent(data);
+      fetchStudents();
+      showToast("ID Card revoked successfully");
+    } else {
+      setManageError(data.error ?? "Failed to revoke");
+    }
+  }
+
+  async function handleRegenerate() {
+    setManageError("");
+    setManageLoading(true);
+    const res = await fetch(`/api/students/${manageStudent!.id}/regenerate`, {
+      method: "POST",
+    });
+    const data = await res.json();
+    setManageLoading(false);
+    if (res.ok) {
+      setManageStudent(data);
+      fetchStudents();
+      showToast("Replacement ID Card generated");
+    } else {
+      setManageError(data.error ?? "Failed to regenerate");
     }
   }
 
@@ -492,6 +535,94 @@ export default function StudentsPage() {
         true
       )}
 
+      {manageStudent && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 50, padding: 16, backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-surface)", borderRadius: 16,
+            boxShadow: "var(--shadow-xl)", width: "100%", maxWidth: 440,
+            overflow: "hidden", display: "flex", flexDirection: "column",
+            border: "1px solid var(--border)",
+          }}>
+            <div style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "20px 24px", borderBottom: "1px solid var(--border)", flexShrink: 0,
+            }}>
+              <div>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>Manage ID Card</h2>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{manageStudent.firstName} {manageStudent.lastName}</p>
+              </div>
+              <button onClick={() => setManageStudent(null)} style={{
+                background: "var(--bg-surface-2)", border: "1px solid var(--border)",
+                borderRadius: 8, padding: 8, cursor: "pointer", color: "var(--text-secondary)", display: "flex",
+              }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+              {new Date(manageStudent.qrExpiresAt) < new Date() ? (
+                <>
+                  <div style={{
+                    padding: "12px 16px", borderRadius: 8, fontSize: 13,
+                    background: "var(--danger-light)", color: "var(--danger-text)",
+                    border: "1px solid color-mix(in srgb, var(--danger) 20%, transparent)",
+                  }}>
+                    <AlertCircle size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 8 }} />
+                    This student's ID Card is currently expired.
+                  </div>
+                  {manageStudent.isActive && (
+                    <button onClick={handleRegenerate} disabled={manageLoading} className="btn-primary" style={{ width: "100%", padding: "12px" }}>
+                      {manageLoading ? "Generating..." : "Generate Replacement Card"}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{
+                    padding: "12px 16px", borderRadius: 8, fontSize: 13,
+                    background: "var(--success-light)", color: "var(--success-text)",
+                    border: "1px solid color-mix(in srgb, var(--success) 20%, transparent)",
+                  }}>
+                    <CheckCircle size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 8 }} />
+                    This student's ID Card is active.
+                  </div>
+                  
+                  <div>
+                    <label className="label">Revocation Reason</label>
+                    <select value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)} className="input">
+                      <option value="lost">Card Lost / Stolen</option>
+                      <option value="left">Student Left School</option>
+                    </select>
+                  </div>
+
+                  <button onClick={handleRevoke} disabled={manageLoading} style={{
+                    width: "100%", padding: "12px", borderRadius: 8,
+                    background: "var(--danger)", color: "#fff", border: "none",
+                    fontWeight: 600, cursor: "pointer", opacity: manageLoading ? 0.7 : 1
+                  }}>
+                    {manageLoading ? "Revoking..." : "Revoke ID Card"}
+                  </button>
+                </>
+              )}
+              
+              {manageError && (
+                <div style={{
+                  padding: "10px 14px", borderRadius: 8, fontSize: 13,
+                  background: "var(--danger-light)", color: "var(--danger-text)",
+                  border: "1px solid color-mix(in srgb, var(--danger) 20%, transparent)",
+                }}>
+                  {manageError}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {students.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
           <Users size={40} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
@@ -506,7 +637,7 @@ export default function StudentsPage() {
                 <th>Student ID</th>
                 <th>Class</th>
                 <th>Parent Phone</th>
-                <th>ID Card</th>
+                <th>Manage ID</th>
                 <th>Edit</th>
               </tr>
             </thead>
@@ -538,20 +669,37 @@ export default function StudentsPage() {
                   </td>
                   <td style={{ color: "var(--text-secondary)" }}>{s.parentPhone ?? "—"}</td>
                   <td>
-                    <button
-                      onClick={() => downloadIDCard(s)}
-                      disabled={downloadingId === s.id}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        background: "var(--bg-surface-2)", border: "1px solid var(--border)",
-                        borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600,
-                        color: "var(--text-secondary)", cursor: "pointer",
-                        opacity: downloadingId === s.id ? 0.6 : 1,
-                      }}
-                    >
-                      {downloadingId === s.id ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <FileDown size={13} />}
-                      {downloadingId === s.id ? "..." : "Download PDF"}
-                    </button>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => downloadIDCard(s)}
+                        disabled={downloadingId === s.id}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          background: "var(--bg-surface-2)", border: "1px solid var(--border)",
+                          borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 600,
+                          color: "var(--text-secondary)", cursor: "pointer",
+                          opacity: downloadingId === s.id ? 0.6 : 1,
+                        }}
+                      >
+                        {downloadingId === s.id ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <FileDown size={13} />}
+                        {downloadingId === s.id ? "..." : "PDF"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setManageStudent(s);
+                          setRevokeReason("lost");
+                          setManageError("");
+                        }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5,
+                          background: "var(--bg-surface-2)", border: "1px solid var(--border)",
+                          borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 600,
+                          color: "var(--text-secondary)", cursor: "pointer",
+                        }}
+                      >
+                        <QrCode size={13} /> Manage
+                      </button>
+                    </div>
                   </td>
                   <td>
                     <button

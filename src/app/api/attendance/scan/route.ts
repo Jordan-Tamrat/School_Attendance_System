@@ -53,6 +53,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Inactive student" }, { status: 400 });
   }
 
+  if (student.qrExpiresAt && student.qrExpiresAt < new Date()) {
+    await prisma.scanException.create({
+      data: { qrCodeData, scannedById: session!.user.id, exceptionType: "expired_qr" },
+    });
+    return NextResponse.json({ error: "ID Card Expired" }, { status: 403 });
+  }
+
   const existing = await prisma.attendanceRecord.findUnique({
     where: { studentId_date: { studentId: student.id, date: today } },
   });

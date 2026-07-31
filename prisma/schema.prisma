@@ -47,6 +47,7 @@ model Student {
   photoUrl      String?
   qrCodeData    String   @unique
   qrCodeImage   String?  @db.Text
+  qrExpiresAt   DateTime
   classId       String
   class         Class    @relation(fields: [classId], references: [id])
   parentPhone   String?
@@ -128,4 +129,5 @@ enum ExceptionType {
   duplicate_scan
   unknown_qr
   inactive_student
+  expired_qr
 }

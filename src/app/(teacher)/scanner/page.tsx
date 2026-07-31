@@ -6,7 +6,7 @@ import { queueScan } from "@/services/offlineQueue";
 import { CheckCircle, XCircle, WifiOff, QrCode, StopCircle, Clock, UserX, RefreshCw } from "lucide-react";
 
 interface ScanResult {
-  type: "success" | "error" | "duplicate" | "offline";
+  type: "success" | "error" | "duplicate" | "offline" | "expired";
   message: string;
   time: string;
 }
@@ -90,6 +90,8 @@ export default function ScannerPage() {
         fetchAbsent();
       } else if (res.status === 409) {
         r = { type: "duplicate", message: `Already scanned today (${data.existing?.status})`, time };
+      } else if (res.status === 403) {
+        r = { type: "expired", message: data.error ?? "ID Card Expired", time };
       } else {
         r = { type: "error", message: data.error ?? "Scan failed", time };
       }
@@ -109,6 +111,7 @@ export default function ScannerPage() {
     success:   { bg: "var(--success-light)",  color: "var(--success-text)",  border: "color-mix(in srgb, var(--success) 25%, transparent)" },
     error:     { bg: "var(--danger-light)",   color: "var(--danger-text)",   border: "color-mix(in srgb, var(--danger) 25%, transparent)" },
     duplicate: { bg: "var(--warning-light)",  color: "var(--warning-text)",  border: "color-mix(in srgb, var(--warning) 25%, transparent)" },
+    expired:   { bg: "var(--danger-light)",   color: "var(--danger-text)",   border: "color-mix(in srgb, var(--danger) 25%, transparent)" },
     offline:   { bg: "var(--bg-surface-2)",   color: "var(--text-secondary)", border: "var(--border)" },
   };
 
@@ -184,6 +187,7 @@ export default function ScannerPage() {
             }}>
               {latest.type === "success" && <CheckCircle size={17} />}
               {latest.type === "error" && <XCircle size={17} />}
+              {latest.type === "expired" && <XCircle size={17} />}
               {latest.type === "duplicate" && <Clock size={17} />}
               {latest.type === "offline" && <WifiOff size={17} />}
               {latest.message}
