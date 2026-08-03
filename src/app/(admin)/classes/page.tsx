@@ -140,8 +140,7 @@ export default function ClassesPage() {
                   <input
                     value={form.section}
                     onChange={(e) => setForm({ ...form, section: e.target.value })}
-                    required
-                    placeholder="e.g. A"
+                    placeholder="e.g. A (Optional)"
                     className="input"
                   />
                 </div>
@@ -273,7 +272,7 @@ export default function ClassesPage() {
                         fontSize: 16, fontWeight: 800, color: "var(--accent-text)",
                         marginBottom: 12,
                       }}>
-                        {cls.grade}{cls.section}
+                        {cls.grade}{cls.section ? `-${cls.section}` : ""}
                       </div>
                       <button
                         onClick={() => { setDeleteId(cls.id); setError(""); }}
@@ -291,7 +290,7 @@ export default function ClassesPage() {
                     </div>
 
                     <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
-                      Grade {cls.grade} — Section {cls.section}
+                      Grade {cls.grade} {cls.section ? `— Section ${cls.section}` : ""}
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>

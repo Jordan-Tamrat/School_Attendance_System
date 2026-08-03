@@ -4,8 +4,8 @@ import Link from "next/link";
 import { Users, CheckCircle, XCircle, Clock, QrCode, PenLine, AlertTriangle } from "lucide-react";
 
 async function getStats(userId: string, role: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayStr = new Date().toLocaleDateString("en-CA");
+  const today = new Date(`${todayStr}T00:00:00Z`);
 
   const [total, present, late, exceptions] = await Promise.all([
     prisma.student.count({ where: { isActive: true } }),
@@ -129,34 +129,36 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick actions */}
-      <div style={{ marginBottom: 12 }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          Quick Actions
-        </h2>
-        <style>{quickActionStyle}</style>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          {quickActions.map(({ href, label, icon: Icon, desc }) => (
-            <Link key={href} href={href} style={{ textDecoration: "none" }}>
-              <div className="card quick-action-card" style={{
-                padding: "18px 20px", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 14,
-              }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: "var(--accent-light)",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      {session!.user.role !== "admin" && (
+        <div style={{ marginBottom: 12 }}>
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Quick Actions
+          </h2>
+          <style>{quickActionStyle}</style>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            {quickActions.map(({ href, label, icon: Icon, desc }) => (
+              <Link key={href} href={href} style={{ textDecoration: "none" }}>
+                <div className="card quick-action-card" style={{
+                  padding: "18px 20px", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 14,
                 }}>
-                  <Icon size={18} color="var(--accent-text)" />
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: "var(--accent-light)",
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  }}>
+                    <Icon size={18} color="var(--accent-text)" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{label}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{desc}</div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{label}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{desc}</div>
-                </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Exceptions alert */}
       {session!.user.role === "admin" && stats.exceptions > 0 && (

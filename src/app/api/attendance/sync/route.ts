@@ -8,13 +8,24 @@ interface QueuedRecord {
   clientTimestamp: string;
 }
 
-async function resolveStatus(scanTime: Date): Promise<"present" | "late"> {
+async function resolveStatus(scanTime: Date): Promise<"present" | "late" | "early"> {
   const settings = await prisma.schoolSettings.findUnique({ where: { id: "default" } });
   if (!settings) return "present";
-  const [startHour, startMin] = settings.schoolStartTime.split(":").map(Number);
-  const schoolStart = new Date(scanTime);
-  schoolStart.setHours(startHour, startMin, 0, 0);
-  const diffMin = (scanTime.getTime() - schoolStart.getTime()) / 60000;
+
+  const [openHour, openMin] = settings.doorOpensTime.split(":").map(Number);
+  const [closeHour, closeMin] = settings.doorClosesTime.split(":").map(Number);
+  
+  const doorOpens = new Date(scanTime);
+  doorOpens.setHours(openHour, openMin, 0, 0);
+
+  const doorCloses = new Date(scanTime);
+  doorCloses.setHours(closeHour, closeMin, 0, 0);
+
+  if (scanTime < doorOpens) {
+    return "early";
+  }
+
+  const diffMin = (scanTime.getTime() - doorCloses.getTime()) / 60000;
   return diffMin > settings.lateThresholdMin ? "late" : "present";
 }
 
@@ -41,9 +52,14 @@ export async function POST(req: NextRequest) {
       }
 
       const scanTime = new Date(record.clientTimestamp);
-      const date = new Date(scanTime);
-      date.setHours(0, 0, 0, 0);
+      const dateStr = scanTime.toLocaleDateString("en-CA"); // YYYY-MM-DD local to the scan time
+      const date = new Date(`${dateStr}T00:00:00Z`);
       const status = await resolveStatus(scanTime);
+
+      if (status === "early") {
+        results.failed++;
+        continue;
+      }
 
       await prisma.attendanceRecord.upsert({
         where: { studentId_date: { studentId: student.id, date } },

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Printer, BarChart2, Search, Edit2, X, CheckCircle } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
 
-type ReportType = "daily" | "absent" | "monthly" | "student";
+type ReportType = "daily" | "absent" | "student";
 
 interface AttendanceRecord {
   id: string;
@@ -44,7 +44,6 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 export default function ReportsPage() {
   const [type, setType] = useState<ReportType>("daily");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [studentSearch, setStudentSearch] = useState("");
   const [studentResults, setStudentResults] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -68,7 +67,6 @@ export default function ReportsPage() {
     setLoading(true);
     const params = new URLSearchParams({ type });
     if (type === "daily" || type === "absent") params.set("date", date);
-    if (type === "monthly") params.set("month", month);
     if (type === "student" && selectedStudent) params.set("studentId", selectedStudent.id);
     const res = await fetch(`/api/reports?${params}`);
     const data = await res.json();
@@ -101,7 +99,6 @@ export default function ReportsPage() {
   const typeLabels: Record<ReportType, string> = {
     daily: "Daily Attendance",
     absent: "Absent Students",
-    monthly: "Monthly Summary",
     student: "Student History",
   };
 
@@ -110,12 +107,20 @@ export default function ReportsPage() {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 className="page-title">Reports</h1>
-          <p className="page-subtitle">Generate and export attendance reports</p>
+          <p className="page-subtitle no-print">Generate and export attendance reports</p>
         </div>
         <button onClick={() => window.print()} className="btn-secondary no-print">
           <Printer size={15} /> Print Report
         </button>
       </div>
+
+      {/* Global Print Styles */}
+      <style>{`
+        @media print {
+          @page { margin: 0; }
+          body { margin: 1.6cm; }
+        }
+      `}</style>
 
       {/* Filter bar */}
       <div className="card no-print" style={{ padding: "20px 24px", marginBottom: 24 }}>
@@ -123,7 +128,7 @@ export default function ReportsPage() {
           <div>
             <label className="label">Report Type</label>
             <div style={{ display: "flex", gap: 6 }}>
-              {(["daily", "absent", "monthly", "student"] as ReportType[]).map((t) => (
+              {(["daily", "absent", "student"] as ReportType[]).map((t) => (
                 <button
                   key={t}
                   onClick={() => { setType(t); setGenerated(false); setRecords([]); setAbsentStudents([]); }}
@@ -145,13 +150,6 @@ export default function ReportsPage() {
             <div>
               <label className="label">Date</label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" style={{ width: "auto" }} />
-            </div>
-          )}
-
-          {type === "monthly" && (
-            <div>
-              <label className="label">Month</label>
-              <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="input" style={{ width: "auto" }} />
             </div>
           )}
 
@@ -278,7 +276,7 @@ export default function ReportsPage() {
       {/* Results table */}
       {records.length > 0 && (
         <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>
               {records.length} record{records.length !== 1 ? "s" : ""} found
             </span>
@@ -292,12 +290,13 @@ export default function ReportsPage() {
                   <th>Status</th>
                   <th>Method</th>
                   {type === "student" && <th>Note</th>}
-                  <th>Update</th>
+                  <th className="no-print">Update</th>
                 </tr>
               </thead>
               <tbody>
                 {records.map((r) => {
                   const sc = statusColors[r.status];
+                  const isEditable = new Date(r.date).toLocaleDateString("en-CA", { timeZone: "UTC" }) === new Date().toLocaleDateString("en-CA");
                   return (
                     <tr key={r.id}>
                       {type !== "student" && (
@@ -330,18 +329,22 @@ export default function ReportsPage() {
                           {r.auditNote ?? r.permissionNote ?? "—"}
                         </td>
                       )}
-                      <td>
-                        <button
-                          onClick={() => { setEditRecord(r); setEditStatus(r.status); setEditNote(r.permissionNote ?? ""); }}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 5,
-                            background: "var(--bg-surface-2)", border: "1px solid var(--border)",
-                            borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 500,
-                            color: "var(--text-secondary)", cursor: "pointer",
-                          }}
-                        >
-                          <Edit2 size={12} /> Edit
-                        </button>
+                      <td className="no-print">
+                        <div title={!isEditable ? "Cannot edit past records" : ""} style={{ display: "inline-block" }}>
+                          <button
+                            onClick={() => { setEditRecord(r); setEditStatus(r.status); setEditNote(r.permissionNote ?? ""); }}
+                            disabled={!isEditable}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 5,
+                              background: "var(--bg-surface-2)", border: "1px solid var(--border)",
+                              borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 500,
+                              color: "var(--text-secondary)", cursor: isEditable ? "pointer" : "not-allowed",
+                              opacity: isEditable ? 1 : 0.5,
+                            }}
+                          >
+                            <Edit2 size={12} /> Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

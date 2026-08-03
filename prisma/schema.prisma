@@ -102,8 +102,9 @@ model SchoolSettings {
   id               String   @id @default("default")
   schoolName       String   @default("My School")
   schoolCode       String   @default("MS")  // auto-derived from school name initials, overridable
+  doorOpensTime    String   @default("07:00")
+  doorClosesTime   String   @default("07:30")
   lateThresholdMin Int      @default(15)
-  schoolStartTime  String   @default("07:30")
   updatedAt        DateTime @updatedAt
 }
 

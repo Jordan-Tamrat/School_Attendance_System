@@ -11,14 +11,11 @@ export async function GET(req: NextRequest) {
   const date = searchParams.get("date") ?? new Date().toISOString().split("T")[0];
   const classId = searchParams.get("classId");
   const studentId = searchParams.get("studentId");
-  const month = searchParams.get("month"); // format: "2024-11"
 
   const scopedClassId = classId;
 
   if (type === "daily") {
-    const [y, m, d] = date.split("-").map(Number);
-    const targetDate = new Date(y, m - 1, d);
-    targetDate.setHours(0, 0, 0, 0);
+    const targetDate = new Date(`${date}T00:00:00Z`);
 
     const records = await prisma.attendanceRecord.findMany({
       where: {
@@ -36,9 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (type === "absent") {
-    const [y, m, d] = date.split("-").map(Number);
-    const targetDate = new Date(y, m - 1, d);
-    targetDate.setHours(0, 0, 0, 0);
+    const targetDate = new Date(`${date}T00:00:00Z`);
 
     const presentIds = await prisma.attendanceRecord.findMany({
       where: {
@@ -74,24 +69,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(records);
   }
 
-  if (type === "monthly" && month) {
-    const [year, monthNum] = month.split("-").map(Number);
-    const start = new Date(year, monthNum - 1, 1);
-    const end = new Date(year, monthNum, 0);
 
-    const records = await prisma.attendanceRecord.findMany({
-      where: {
-        date: { gte: start, lte: end },
-        ...(scopedClassId ? { classId: scopedClassId } : {}),
-      },
-      include: {
-        student: { select: { firstName: true, lastName: true, studentNumber: true } },
-      },
-      orderBy: [{ date: "asc" }, { student: { lastName: "asc" } }],
-    });
-
-    return NextResponse.json(records);
-  }
 
   return NextResponse.json({ error: "Invalid report type" }, { status: 400 });
 }

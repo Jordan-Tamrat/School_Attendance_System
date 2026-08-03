@@ -6,7 +6,8 @@ import { z } from "zod";
 const SettingsSchema = z.object({
   schoolName: z.string().min(1),
   schoolCode: z.string().min(1).max(6).toUpperCase().optional(),
-  schoolStartTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:mm format"),
+  doorOpensTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:mm format"),
+  doorClosesTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:mm format"),
   lateThresholdMin: z.coerce.number().int().min(1).max(120),
 });
 

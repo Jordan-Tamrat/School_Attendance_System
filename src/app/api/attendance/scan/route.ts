@@ -8,15 +8,24 @@ const ScanSchema = z.object({
   clientTimestamp: z.string().optional(),
 });
 
-async function resolveStatus(scanTime: Date): Promise<"present" | "late"> {
+async function resolveStatus(scanTime: Date): Promise<"present" | "late" | "early"> {
   const settings = await prisma.schoolSettings.findUnique({ where: { id: "default" } });
   if (!settings) return "present";
 
-  const [startHour, startMin] = settings.schoolStartTime.split(":").map(Number);
-  const schoolStart = new Date(scanTime);
-  schoolStart.setHours(startHour, startMin, 0, 0);
+  const [openHour, openMin] = settings.doorOpensTime.split(":").map(Number);
+  const [closeHour, closeMin] = settings.doorClosesTime.split(":").map(Number);
+  
+  const doorOpens = new Date(scanTime);
+  doorOpens.setHours(openHour, openMin, 0, 0);
 
-  const diffMin = (scanTime.getTime() - schoolStart.getTime()) / 60000;
+  const doorCloses = new Date(scanTime);
+  doorCloses.setHours(closeHour, closeMin, 0, 0);
+
+  if (scanTime < doorOpens) {
+    return "early";
+  }
+
+  const diffMin = (scanTime.getTime() - doorCloses.getTime()) / 60000;
   return diffMin > settings.lateThresholdMin ? "late" : "present";
 }
 
@@ -31,8 +40,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { qrCodeData, clientTimestamp } = parsed.data;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local time
+  const today = new Date(`${todayStr}T00:00:00Z`); // Strict UTC midnight
 
   const student = await prisma.student.findUnique({
     where: { qrCodeData },
@@ -82,6 +91,18 @@ export async function POST(req: NextRequest) {
   // Use clientTimestamp if provided (offline scan) — reflects actual arrival time
   const scanTime = clientTimestamp ? new Date(clientTimestamp) : new Date();
   const status = await resolveStatus(scanTime);
+
+  if (status === "early") {
+    await prisma.scanException.create({
+      data: {
+        qrCodeData,
+        scannedById: session!.user.id,
+        exceptionType: "unknown_qr",
+        notes: `Scan rejected: Too early at ${scanTime.toLocaleTimeString()}`,
+      },
+    });
+    return NextResponse.json({ error: "Too early to check in" }, { status: 400 });
+  }
 
   const record = await prisma.attendanceRecord.create({
     data: {

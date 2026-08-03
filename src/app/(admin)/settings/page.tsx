@@ -7,7 +7,8 @@ import { Toast, useToast } from "@/components/Toast";
 interface SchoolSettings {
   schoolName: string;
   schoolCode: string;
-  schoolStartTime: string;
+  doorOpensTime: string;
+  doorClosesTime: string;
   lateThresholdMin: number;
 }
 
@@ -15,7 +16,8 @@ export default function SettingsPage() {
   const [form, setForm] = useState<SchoolSettings>({
     schoolName: "",
     schoolCode: "",
-    schoolStartTime: "07:30",
+    doorOpensTime: "07:00",
+    doorClosesTime: "07:30",
     lateThresholdMin: 15,
   });
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,8 @@ export default function SettingsPage() {
         setForm({
           schoolName: data.schoolName,
           schoolCode: data.schoolCode,
-          schoolStartTime: data.schoolStartTime,
+          doorOpensTime: data.doorOpensTime,
+          doorClosesTime: data.doorClosesTime,
           lateThresholdMin: data.lateThresholdMin,
         });
         setFetching(false);
@@ -127,17 +130,32 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="label">School Start Time *</label>
+              <label className="label">Door Opens Time *</label>
               <input
                 type="time"
-                value={form.schoolStartTime}
-                onChange={(e) => setForm({ ...form, schoolStartTime: e.target.value })}
+                value={form.doorOpensTime}
+                onChange={(e) => setForm({ ...form, doorOpensTime: e.target.value })}
                 required
                 className="input"
                 style={{ width: "auto" }}
               />
               <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                Students who scan after this time + the threshold below are marked &quot;Late&quot;
+                Students who scan before this time will be rejected as &quot;Too early&quot;
+              </p>
+            </div>
+
+            <div>
+              <label className="label">Door Closes Time *</label>
+              <input
+                type="time"
+                value={form.doorClosesTime}
+                onChange={(e) => setForm({ ...form, doorClosesTime: e.target.value })}
+                required
+                className="input"
+                style={{ width: "auto" }}
+              />
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                Students who scan after this time are marked &quot;Late&quot; (or present if within threshold below)
               </p>
             </div>
 
@@ -158,7 +176,7 @@ export default function SettingsPage() {
               <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                 A scan arriving more than{" "}
                 <strong>{form.lateThresholdMin} minute{form.lateThresholdMin !== 1 ? "s" : ""}</strong>{" "}
-                after <strong>{form.schoolStartTime}</strong> is recorded as &quot;Late&quot;
+                after <strong>{form.doorClosesTime}</strong> is recorded as &quot;Late&quot;
               </p>
             </div>
 
