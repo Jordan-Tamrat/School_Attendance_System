@@ -130,4 +130,5 @@ enum ExceptionType {
   unknown_qr
   inactive_student
   expired_qr
+  too_early
 }

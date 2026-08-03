@@ -57,6 +57,14 @@ export async function POST(req: NextRequest) {
       const status = await resolveStatus(scanTime);
 
       if (status === "early") {
+        await prisma.scanException.create({
+          data: {
+            qrCodeData: record.qrCodeData,
+            scannedById: session!.user.id,
+            exceptionType: "too_early",
+            notes: `Offline scan rejected: Too early at ${scanTime.toLocaleTimeString()}`,
+          },
+        });
         results.failed++;
         continue;
       }

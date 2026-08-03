@@ -12,12 +12,15 @@ interface Exception {
   resolved: boolean;
   notes: string | null;
   scannedBy: { fullName: string } | null;
+  student: { firstName: string; lastName: string; studentNumber: string } | null;
 }
 
 const typeConfig: Record<string, { label: string; bg: string; color: string }> = {
   duplicate_scan:   { label: "Duplicate Scan",   bg: "var(--warning-light)", color: "var(--warning-text)" },
   unknown_qr:       { label: "Unknown QR Code",  bg: "var(--danger-light)",  color: "var(--danger-text)" },
   inactive_student: { label: "Inactive Student", bg: "var(--bg-surface-2)",  color: "var(--text-secondary)" },
+  expired_qr:       { label: "Expired ID Card",  bg: "var(--purple-light)",  color: "var(--purple-text)" },
+  too_early:        { label: "Too Early",        bg: "var(--accent-light)",  color: "var(--accent-text)" },
 };
 
 export default function ExceptionsPage() {
@@ -108,11 +111,16 @@ export default function ExceptionsPage() {
                           </span>
                         </div>
                         <div style={{
-                          fontSize: 13, color: "var(--text-muted)",
-                          fontFamily: "monospace", marginBottom: 4,
+                          fontSize: 13, color: ex.student ? "var(--text-primary)" : "var(--text-muted)",
+                          fontFamily: ex.student ? "inherit" : "monospace", marginBottom: 4,
+                          fontWeight: ex.student ? 600 : 400,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
-                          {ex.qrCodeData}
+                          {ex.student ? (
+                            <>{ex.student.firstName} {ex.student.lastName} <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>({ex.student.studentNumber})</span></>
+                          ) : (
+                            ex.qrCodeData
+                          )}
                         </div>
                         <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                           {new Date(ex.scanTime).toLocaleString("en-US", {

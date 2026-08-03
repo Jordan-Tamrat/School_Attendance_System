@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { queueScan } from "@/services/offlineQueue";
-import { CheckCircle, XCircle, WifiOff, QrCode, StopCircle, Clock, UserX, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, WifiOff, QrCode, StopCircle, Clock, UserX, RefreshCw, AlertTriangle } from "lucide-react";
 
 interface ScanResult {
   type: "success" | "error" | "duplicate" | "offline" | "expired";
@@ -28,6 +28,34 @@ export default function ScannerPage() {
   const [absentLoading, setAbsentLoading] = useState(false);
   const lastScanned = useRef("");
   const cooldown = useRef(false);
+  const isBlocked = useRef(false);
+  const [blockedException, setBlockedException] = useState<{ type: string; title: string; desc: string } | null>(null);
+
+  function playErrorSound() {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "square";
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.warn("Audio context not supported", e);
+    }
+  }
+
+  function clearBlock() {
+    setBlockedException(null);
+    isBlocked.current = false;
+    cooldown.current = false;
+    lastScanned.current = "";
+  }
 
   const fetchAbsent = useCallback(async () => {
     setAbsentLoading(true);
@@ -62,7 +90,7 @@ export default function ScannerPage() {
   }
 
   async function onScanSuccess(qrCodeData: string) {
-    if (cooldown.current || qrCodeData === lastScanned.current) return;
+    if (isBlocked.current || cooldown.current || qrCodeData === lastScanned.current) return;
     cooldown.current = true;
     lastScanned.current = qrCodeData;
 
@@ -88,12 +116,25 @@ export default function ScannerPage() {
       if (res.ok) {
         r = { type: "success", message: `${data.student} — marked ${data.status}`, time };
         fetchAbsent();
-      } else if (res.status === 409) {
-        r = { type: "duplicate", message: `Already scanned today (${data.existing?.status})`, time };
-      } else if (res.status === 403) {
-        r = { type: "expired", message: data.error ?? "ID Card Expired", time };
       } else {
-        r = { type: "error", message: data.error ?? "Scan failed", time };
+        isBlocked.current = true;
+        playErrorSound();
+        if (res.status === 409) {
+          r = { type: "duplicate", message: `Already scanned today (${data.existing?.status})`, time };
+          setBlockedException({ type: "duplicate", title: "Duplicate Scan", desc: `This student was already marked ${data.existing?.status} today.` });
+        } else if (res.status === 403) {
+          r = { type: "expired", message: data.error ?? "ID Card Expired", time };
+          setBlockedException({ type: "expired", title: "Expired ID Card", desc: "This student's ID card is no longer valid." });
+        } else if (data.error === "Too early to check in") {
+          r = { type: "error", message: data.error, time };
+          setBlockedException({ type: "too_early", title: "Too Early", desc: "The student is trying to check in before the doors open." });
+        } else if (data.error === "Inactive student") {
+          r = { type: "error", message: data.error, time };
+          setBlockedException({ type: "inactive", title: "Inactive Student", desc: "This student's account is suspended or inactive." });
+        } else {
+          r = { type: "error", message: data.error ?? "Scan failed", time };
+          setBlockedException({ type: "unknown", title: "Unknown QR Code", desc: "This QR code is not recognized by the system." });
+        }
       }
       setLatest(r);
       setHistory((h) => [r, ...h].slice(0, 20));
@@ -104,7 +145,13 @@ export default function ScannerPage() {
       setHistory((h) => [r, ...h].slice(0, 20));
     }
 
-    setTimeout(() => { setLatest(null); cooldown.current = false; lastScanned.current = ""; }, 4000);
+    setTimeout(() => { 
+      if (!isBlocked.current) {
+        setLatest(null); 
+        cooldown.current = false; 
+        lastScanned.current = ""; 
+      }
+    }, 4000);
   }
 
   const resultStyle: Record<string, { bg: string; color: string; border: string }> = {
@@ -144,7 +191,7 @@ export default function ScannerPage() {
             position: "relative",
           }}>
             <div id="qr-reader" style={{ width: "100%", height: "100%" }} />
-            {!scanning && (
+            {!scanning && !blockedException && (
               <div style={{
                 position: "absolute", inset: 0,
                 display: "flex", flexDirection: "column",
@@ -153,6 +200,40 @@ export default function ScannerPage() {
               }}>
                 <QrCode size={48} color="var(--text-muted)" />
                 <span style={{ fontSize: 14, color: "var(--text-muted)" }}>Camera inactive</span>
+              </div>
+            )}
+            
+            {blockedException && (
+              <div style={{
+                position: "absolute", inset: 0, zIndex: 10,
+                background: "rgba(220, 38, 38, 0.95)",
+                backdropFilter: "blur(8px)",
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center",
+                padding: 24, textAlign: "center", color: "#fff",
+                animation: "fadeIn 0.2s ease"
+              }}>
+                <AlertTriangle size={64} color="#fff" style={{ marginBottom: 16 }} />
+                <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.02em" }}>
+                  {blockedException.title}
+                </h2>
+                <p style={{ fontSize: 15, opacity: 0.9, marginBottom: 32, lineHeight: 1.5 }}>
+                  {blockedException.desc}
+                </p>
+                <button
+                  onClick={clearBlock}
+                  style={{
+                    background: "#fff", color: "#dc2626",
+                    border: "none", padding: "16px 32px",
+                    borderRadius: 12, fontSize: 16, fontWeight: 700,
+                    cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                    transition: "transform 0.1s",
+                  }}
+                  onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
+                  onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                >
+                  Continue
+                </button>
               </div>
             )}
           </div>

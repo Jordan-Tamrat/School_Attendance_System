@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       data: {
         qrCodeData,
         scannedById: session!.user.id,
-        exceptionType: "unknown_qr",
+        exceptionType: "too_early",
         notes: `Scan rejected: Too early at ${scanTime.toLocaleTimeString()}`,
       },
     });
