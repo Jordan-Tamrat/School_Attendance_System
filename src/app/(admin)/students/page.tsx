@@ -716,10 +716,11 @@ export default function StudentsPage() {
                         style={{
                           display: "flex", alignItems: "center", gap: 6,
                           background: "var(--bg-surface-2)", border: "1px solid var(--border)",
-                          borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 600,
+                          borderRadius: 6, fontWeight: 600,
                           color: "var(--text-secondary)", cursor: "pointer",
                           opacity: downloadingId === s.id ? 0.6 : 1,
                         }}
+                        className="px-2 py-1.5 md:px-3 md:py-2 text-[11px] md:text-xs flex-1 justify-center md:flex-none md:justify-start"
                       >
                         {downloadingId === s.id ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <FileDown size={13} />}
                         {downloadingId === s.id ? "..." : "PDF"}
@@ -733,9 +734,10 @@ export default function StudentsPage() {
                         style={{
                           display: "flex", alignItems: "center", gap: 5,
                           background: "var(--bg-surface-2)", border: "1px solid var(--border)",
-                          borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 600,
+                          borderRadius: 6, fontWeight: 600,
                           color: "var(--text-secondary)", cursor: "pointer",
                         }}
+                        className="px-2 py-1.5 md:px-3 md:py-2 text-[11px] md:text-xs flex-1 justify-center md:flex-none md:justify-start"
                       >
                         <QrCode size={13} /> Manage
                       </button>
@@ -747,9 +749,10 @@ export default function StudentsPage() {
                       style={{
                         display: "flex", alignItems: "center", gap: 5,
                         background: "var(--bg-surface-2)", border: "1px solid var(--border)",
-                        borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600,
+                        borderRadius: 6, fontWeight: 600,
                         color: "var(--text-secondary)", cursor: "pointer",
                       }}
+                      className="px-2 py-1.5 md:px-3 md:py-2 text-[11px] md:text-xs flex-1 justify-center md:flex-none md:justify-start"
                     >
                       <Pencil size={13} /> Edit
                     </button>

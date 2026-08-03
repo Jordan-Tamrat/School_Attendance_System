@@ -8,11 +8,11 @@ export default async function TeacherLayout({ children }: { children: React.Reac
   if (!session) redirect("/login");
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-base)" }}>
+    <div className="flex flex-col md:flex-row min-h-screen bg-[var(--bg-base)]">
       <Sidebar />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <div className="flex-1 flex flex-col min-w-0">
         <OfflineBanner />
-        <main style={{ flex: 1, padding: "32px 36px", maxWidth: 1200 }}>
+        <main className="flex-1 p-4 md:p-8 lg:p-10 max-w-7xl w-full mx-auto min-w-0">
           {children}
         </main>
       </div>

@@ -86,7 +86,7 @@ export default function ManualEntryPage() {
         <p className="page-subtitle">Search a student by name or ID, then record their attendance</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+      <div className="flex flex-col lg:grid lg:grid-cols-2 gap-5 items-start">
         {/* Left — search */}
         <div>
           <div className="card" style={{ padding: 24 }}>

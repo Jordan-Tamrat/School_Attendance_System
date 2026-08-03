@@ -127,19 +127,20 @@ export default function ReportsPage() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
           <div>
             <label className="label">Report Type</label>
-            <div style={{ display: "flex", gap: 6 }}>
-              {(["daily", "absent", "student"] as ReportType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setType(t); setGenerated(false); setRecords([]); setAbsentStudents([]); }}
-                  style={{
-                    padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500,
-                    cursor: "pointer", transition: "all 0.15s",
-                    background: type === t ? "var(--accent)" : "var(--bg-surface-2)",
-                    color: type === t ? "#fff" : "var(--text-secondary)",
-                    border: `1.5px solid ${type === t ? "var(--accent)" : "var(--border)"}`,
-                  }}
-                >
+              <div className="flex gap-2 w-full md:w-auto">
+                {(["daily", "absent", "student"] as ReportType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => { setType(t); setGenerated(false); setRecords([]); setAbsentStudents([]); }}
+                    style={{
+                      borderRadius: 8, fontWeight: 500,
+                      cursor: "pointer", transition: "all 0.15s",
+                      background: type === t ? "var(--accent)" : "var(--bg-surface-2)",
+                      color: type === t ? "#fff" : "var(--text-secondary)",
+                      border: `1.5px solid ${type === t ? "var(--accent)" : "var(--border)"}`,
+                    }}
+                    className="flex-1 md:flex-none text-[11px] md:text-[13px] px-2 py-2 md:px-3.5 md:py-2 text-center"
+                  >
                   {typeLabels[t]}
                 </button>
               ))}
@@ -337,10 +338,11 @@ export default function ReportsPage() {
                             style={{
                               display: "flex", alignItems: "center", gap: 5,
                               background: "var(--bg-surface-2)", border: "1px solid var(--border)",
-                              borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 500,
+                              borderRadius: 6, fontWeight: 500,
                               color: "var(--text-secondary)", cursor: isEditable ? "pointer" : "not-allowed",
                               opacity: isEditable ? 1 : 0.5,
                             }}
+                            className="px-2 py-1.5 md:px-2.5 md:py-1.5 text-[11px] md:text-xs justify-center md:justify-start"
                           >
                             <Edit2 size={12} /> Edit
                           </button>

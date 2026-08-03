@@ -60,7 +60,7 @@ export default async function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="page-header flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="page-title">
             Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"},{" "}
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 28 }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
         {cards.map(({ label, value, icon: Icon, bg, color }) => (
           <div key={label} className="card" style={{ padding: "20px 22px" }}>
             <div style={{
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
             transition: "width 0.6s ease",
           }} />
         </div>
-        <div style={{ display: "flex", gap: 20, marginTop: 12 }}>
+        <div className="flex flex-wrap gap-3 md:gap-5 mt-3">
           {[
             { label: "Present", value: stats.present, color: "var(--success-text)", bg: "var(--success-light)" },
             { label: "Late", value: stats.late, color: "var(--warning-text)", bg: "var(--warning-light)" },
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
             Quick Actions
           </h2>
           <style>{quickActionStyle}</style>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {quickActions.map(({ href, label, icon: Icon, desc }) => (
               <Link key={href} href={href} style={{ textDecoration: "none" }}>
                 <div className="card quick-action-card" style={{
@@ -162,17 +162,14 @@ export default async function DashboardPage() {
 
       {/* Exceptions alert */}
       {session!.user.role === "admin" && stats.exceptions > 0 && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 12,
-          background: "var(--warning-light)",
-          border: "1px solid color-mix(in srgb, var(--warning) 25%, transparent)",
-          borderRadius: 10, padding: "14px 18px", marginTop: 16,
-        }}>
-          <AlertTriangle size={18} color="var(--warning)" style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: 14, color: "var(--warning-text)", flex: 1 }}>
-            <strong>{stats.exceptions}</strong> unresolved scan exception(s) require your attention.
-          </span>
-          <Link href="/exceptions" style={{
+        <div className="flex flex-col md:flex-row md:items-center gap-3 bg-[var(--warning-light)] border border-yellow-500/20 rounded-lg p-3.5 mt-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={18} color="var(--warning)" className="shrink-0" />
+            <span style={{ fontSize: 14, color: "var(--warning-text)", flex: 1 }}>
+              <strong>{stats.exceptions}</strong> unresolved scan exception(s) require your attention.
+            </span>
+          </div>
+          <Link href="/exceptions" className="md:ml-auto inline-flex items-center justify-center w-full md:w-auto" style={{
             fontSize: 13, fontWeight: 600, color: "var(--warning-text)",
             textDecoration: "none", whiteSpace: "nowrap",
             padding: "6px 12px", borderRadius: 6,

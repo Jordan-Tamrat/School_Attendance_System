@@ -169,7 +169,7 @@ export default function ScannerPage() {
         <p className="page-subtitle">Point the camera at a student ID card to mark attendance</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+      <div className="flex flex-col lg:grid lg:grid-cols-2 gap-5 items-start">
         {/* Scanner panel */}
         <div className="card" style={{ padding: 24 }}>
           {!isOnline && (
@@ -311,7 +311,7 @@ export default function ScannerPage() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 420, overflowY: "auto" }}>
-              {absentList.map((s) => (
+              {absentList.slice(0, 50).map((s) => (
                 <div key={s.id} style={{
                   display: "flex", alignItems: "center", gap: 10,
                   padding: "9px 12px", borderRadius: 8,
@@ -332,6 +332,16 @@ export default function ScannerPage() {
                   </div>
                 </div>
               ))}
+              {absentList.length > 50 && (
+                <div style={{
+                  textAlign: "center", padding: "10px", fontSize: 12,
+                  fontWeight: 600, color: "var(--text-muted)",
+                  background: "var(--bg-surface-2)", borderRadius: 8,
+                  marginTop: 4,
+                }}>
+                  + {absentList.length - 50} more students
+                </div>
+              )}
             </div>
           )}
         </div>

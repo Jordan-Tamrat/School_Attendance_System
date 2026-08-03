@@ -8,7 +8,9 @@ import {
   LayoutDashboard, QrCode, PenLine, BarChart2,
   Users, AlertTriangle, LogOut, GraduationCap,
   Sun, Moon, ChevronRight, BookOpen, Shield, SlidersHorizontal,
+  Menu, X
 } from "lucide-react";
+import { useState } from "react";
 
 const teacherLinks = [
   { href: "/dashboard", label: "Dashboard",   icon: LayoutDashboard },
@@ -33,17 +35,46 @@ export default function Sidebar() {
   const { theme, toggle } = useTheme();
   const links = session?.user.role === "admin" ? adminLinks : teacherLinks;
   const initials = session?.user.name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "?";
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <aside style={{
-      width: 240,
-      minHeight: "100vh",
-      background: "var(--bg-sidebar)",
-      display: "flex",
-      flexDirection: "column",
-      flexShrink: 0,
-      borderRight: "1px solid rgba(255,255,255,0.06)",
-    }}>
+    <>
+      {/* Mobile Top Bar */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
+            <GraduationCap size={20} color="#fff" />
+          </div>
+          <div>
+            <div className="text-[15px] font-bold text-white tracking-tight">EduAttend</div>
+            <div className="text-[11px] text-white/40 mt-px">Attendance System</div>
+          </div>
+        </div>
+        <button onClick={() => setIsOpen(true)} className="p-2 text-white">
+          <Menu size={24} />
+        </button>
+      </div>
+
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-[240px] bg-[var(--bg-sidebar)] flex flex-col shrink-0 border-r border-white/10
+        transition-transform duration-300 ease-in-out md:static md:translate-x-0
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
+      `}>
+        {/* Mobile close button */}
+        <button 
+          onClick={() => setIsOpen(false)} 
+          className="md:hidden absolute top-5 right-4 p-1.5 text-white/50 hover:text-white"
+        >
+          <X size={20} />
+        </button>
       {/* Logo */}
       <div style={{
         padding: "24px 20px 20px",
@@ -85,6 +116,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={() => setIsOpen(false)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -188,5 +220,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }
