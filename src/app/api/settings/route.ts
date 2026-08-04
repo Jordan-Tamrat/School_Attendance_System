@@ -9,6 +9,8 @@ const SettingsSchema = z.object({
   doorOpensTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:mm format"),
   doorClosesTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:mm format"),
   lateThresholdMin: z.coerce.number().int().min(1).max(120),
+  academicYearStart: z.string().optional().nullable(),
+  academicYearEnd: z.string().optional().nullable(),
 });
 
 function deriveSchoolCode(name: string): string {
@@ -47,10 +49,23 @@ export async function PUT(req: NextRequest) {
 
   const schoolCode = parsed.data.schoolCode ?? deriveSchoolCode(parsed.data.schoolName);
 
+  const start = parsed.data.academicYearStart ? new Date(`${parsed.data.academicYearStart}T00:00:00Z`) : null;
+  const end = parsed.data.academicYearEnd ? new Date(`${parsed.data.academicYearEnd}T00:00:00Z`) : null;
+  
+  const updateData = {
+    schoolName: parsed.data.schoolName,
+    doorOpensTime: parsed.data.doorOpensTime,
+    doorClosesTime: parsed.data.doorClosesTime,
+    lateThresholdMin: parsed.data.lateThresholdMin,
+    schoolCode,
+    academicYearStart: start,
+    academicYearEnd: end
+  };
+
   const settings = await prisma.schoolSettings.upsert({
     where: { id: "default" },
-    update: { ...parsed.data, schoolCode },
-    create: { id: "default", ...parsed.data, schoolCode },
+    update: updateData,
+    create: { id: "default", ...updateData },
   });
 
   return NextResponse.json(settings);

@@ -55,6 +55,7 @@ export default function ReportsPage() {
   const [editStatus, setEditStatus] = useState("");
   const [editNote, setEditNote] = useState("");
   const [editLoading, setEditLoading] = useState(false);
+  const [studentStats, setStudentStats] = useState<any>(null);
   const { toast, show: showToast, hide: hideToast } = useToast();
 
   async function searchStudents() {
@@ -73,9 +74,15 @@ export default function ReportsPage() {
     if (type === "absent") {
       setAbsentStudents(Array.isArray(data) ? data : []);
       setRecords([]);
+      setStudentStats(null);
+    } else if (type === "student") {
+      setRecords(data.records || []);
+      setStudentStats(data.stats || null);
+      setAbsentStudents([]);
     } else {
       setRecords(Array.isArray(data) ? data : []);
       setAbsentStudents([]);
+      setStudentStats(null);
     }
     setLoading(false);
     setGenerated(true);
@@ -131,7 +138,7 @@ export default function ReportsPage() {
                 {(["daily", "absent", "student"] as ReportType[]).map((t) => (
                   <button
                     key={t}
-                    onClick={() => { setType(t); setGenerated(false); setRecords([]); setAbsentStudents([]); }}
+                    onClick={() => { setType(t); setGenerated(false); setRecords([]); setAbsentStudents([]); setStudentStats(null); }}
                     style={{
                       borderRadius: 8, fontWeight: 500,
                       cursor: "pointer", transition: "all 0.15s",
@@ -277,6 +284,33 @@ export default function ReportsPage() {
       {/* Results table */}
       {records.length > 0 && (
         <>
+          {type === "student" && studentStats && (
+            <div className="card no-print" style={{ padding: "20px 24px", marginBottom: 24, display: "flex", gap: 24, alignItems: "center" }}>
+              <div style={{
+                width: 70, height: 70, borderRadius: "50%",
+                background: "conic-gradient(var(--accent) " + studentStats.rate + "%, var(--bg-surface-2) 0)",
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700 }}>
+                  {studentStats.rate}%
+                </div>
+              </div>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, color: "var(--text-primary)" }}>Overall Attendance</h3>
+                <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--text-secondary)" }}>
+                  <span><strong style={{ color: "var(--success-text)" }}>{studentStats.present + studentStats.late + studentStats.permission}</strong> Attended</span>
+                  <span><strong style={{ color: "var(--danger-text)" }}>{studentStats.absent}</strong> Absent</span>
+                  <span><strong>{studentStats.totalInstructionalDays}</strong> Total Days</span>
+                </div>
+                {studentStats.totalInstructionalDays === 0 && (
+                  <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 4 }}>
+                    Note: Academic year is not set or hasn't started yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>
               {records.length} record{records.length !== 1 ? "s" : ""} found

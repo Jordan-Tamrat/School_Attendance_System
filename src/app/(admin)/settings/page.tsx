@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Settings } from "lucide-react";
+import { Calendar, Save, Settings, Trash2 } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
 
 interface SchoolSettings {
@@ -10,6 +10,14 @@ interface SchoolSettings {
   doorOpensTime: string;
   doorClosesTime: string;
   lateThresholdMin: number;
+  academicYearStart: string;
+  academicYearEnd: string;
+}
+
+interface Holiday {
+  id: string;
+  name: string;
+  date: string;
 }
 
 export default function SettingsPage() {
@@ -19,24 +27,38 @@ export default function SettingsPage() {
     doorOpensTime: "07:00",
     doorClosesTime: "07:30",
     lateThresholdMin: 15,
+    academicYearStart: "",
+    academicYearEnd: "",
   });
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [newHolidayName, setNewHolidayName] = useState("");
+  const [newHolidayDate, setNewHolidayDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [holidayLoading, setHolidayLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const { toast, show: showToast, hide: hideToast } = useToast();
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((data) => {
-        setForm({
-          schoolName: data.schoolName,
-          schoolCode: data.schoolCode,
-          doorOpensTime: data.doorOpensTime,
-          doorClosesTime: data.doorClosesTime,
-          lateThresholdMin: data.lateThresholdMin,
-        });
-        setFetching(false);
+  function loadData() {
+    Promise.all([
+      fetch("/api/settings").then(r => r.json()),
+      fetch("/api/settings/holidays").then(r => r.json())
+    ]).then(([settingsData, holidaysData]) => {
+      setForm({
+        schoolName: settingsData.schoolName,
+        schoolCode: settingsData.schoolCode,
+        doorOpensTime: settingsData.doorOpensTime,
+        doorClosesTime: settingsData.doorClosesTime,
+        lateThresholdMin: settingsData.lateThresholdMin,
+        academicYearStart: settingsData.academicYearStart ? settingsData.academicYearStart.split("T")[0] : "",
+        academicYearEnd: settingsData.academicYearEnd ? settingsData.academicYearEnd.split("T")[0] : "",
       });
+      setHolidays(holidaysData);
+      setFetching(false);
+    });
+  }
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -62,6 +84,34 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleAddHoliday(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newHolidayName || !newHolidayDate) return;
+    
+    setHolidayLoading(true);
+    const res = await fetch("/api/settings/holidays", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newHolidayName, date: newHolidayDate }),
+    });
+    setHolidayLoading(false);
+    
+    if (res.ok) {
+      setNewHolidayName("");
+      setNewHolidayDate("");
+      loadData();
+      showToast("Holiday added");
+    } else {
+      showToast("Failed to add holiday (date might already exist)", "error");
+    }
+  }
+
+  async function handleDeleteHoliday(id: string) {
+    await fetch(`/api/settings/holidays/${id}`, { method: "DELETE" });
+    loadData();
+    showToast("Holiday deleted");
+  }
+
   if (fetching) {
     return (
       <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
@@ -77,7 +127,7 @@ export default function SettingsPage() {
         <p className="page-subtitle">Configure school-wide attendance rules</p>
       </div>
 
-      <div style={{ maxWidth: 520 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "32px", maxWidth: 1100, alignItems: "start" }}>
         <div className="card" style={{ padding: 28 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
             <div style={{
@@ -192,6 +242,108 @@ export default function SettingsPage() {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Academic Calendar Settings */}
+        <div className="card" style={{ padding: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: "var(--purple-light)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Calendar size={18} color="var(--purple-text)" />
+            </div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                Academic Calendar
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
+                Configure the school year and closed holidays
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 32 }}>
+            <div style={{ flex: "1 1 140px" }}>
+              <label className="label">Academic Year Start</label>
+              <input
+                type="date"
+                value={form.academicYearStart}
+                onChange={(e) => setForm({ ...form, academicYearStart: e.target.value })}
+                className="input"
+              />
+            </div>
+            <div style={{ flex: "1 1 140px" }}>
+              <label className="label">Academic Year End</label>
+              <input
+                type="date"
+                value={form.academicYearEnd}
+                onChange={(e) => setForm({ ...form, academicYearEnd: e.target.value })}
+                className="input"
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-end" }}>
+              <button type="submit" disabled={loading} className="btn-primary" style={{ padding: "10px 16px" }}>
+                Save Year
+              </button>
+            </div>
+          </form>
+
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 24 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 12 }}>
+              Holidays & Closures
+            </h3>
+            
+            <form onSubmit={handleAddHoliday} style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+              <input
+                placeholder="Holiday name (e.g. Winter Break)"
+                value={newHolidayName}
+                onChange={e => setNewHolidayName(e.target.value)}
+                required
+                className="input"
+                style={{ flex: "1 1 200px" }}
+              />
+              <input
+                type="date"
+                value={newHolidayDate}
+                onChange={e => setNewHolidayDate(e.target.value)}
+                required
+                className="input"
+                style={{ flex: "1 1 140px" }}
+              />
+              <button type="submit" disabled={holidayLoading} className="btn-secondary" style={{ flex: "0 0 auto" }}>
+                Add
+              </button>
+            </form>
+
+            {holidays.length === 0 ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)", fontSize: 13, background: "var(--bg-surface-2)", borderRadius: 8 }}>
+                No holidays added yet.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {holidays.map((h) => (
+                  <div key={h.id} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "10px 14px", borderRadius: 8, background: "var(--bg-surface-2)", border: "1px solid var(--border)"
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{h.name}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{new Date(h.date).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", month: "short", day: "numeric", year: "numeric" })}</div>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteHoliday(h.id)}
+                      style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", padding: 6 }}
+                      title="Delete holiday"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}

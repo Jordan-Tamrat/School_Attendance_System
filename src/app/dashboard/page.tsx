@@ -3,21 +3,29 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Users, CheckCircle, XCircle, Clock, QrCode, PenLine, AlertTriangle, FileText } from "lucide-react";
 
+import { getDayStatus } from "@/lib/calendar";
+
 async function getStats(userId: string, role: string) {
   const todayStr = new Date().toLocaleDateString("en-CA");
   const today = new Date(`${todayStr}T00:00:00Z`);
 
-  const [total, present, late, permission, exceptions] = await Promise.all([
-    prisma.student.count({ where: { isActive: true } }),
+  const total = await prisma.student.count({ where: { isActive: true } });
+  const exceptions = await prisma.scanException.count({ where: { resolved: false } });
+
+  const dayStatus = await getDayStatus(today);
+  if (dayStatus.isClosed) {
+    return { total, present: 0, late: 0, absent: 0, permission: 0, exceptions, rate: 0, isClosed: true, closedReason: dayStatus.reason };
+  }
+
+  const [present, late, permission] = await Promise.all([
     prisma.attendanceRecord.count({ where: { date: today, status: "present" } }),
     prisma.attendanceRecord.count({ where: { date: today, status: "late" } }),
     prisma.attendanceRecord.count({ where: { date: today, status: "permission" } }),
-    prisma.scanException.count({ where: { resolved: false } }),
   ]);
 
   const absent = total - present - late - permission;
   const rate = total > 0 ? Math.round(((present + late + permission) / total) * 100) : 0;
-  return { total, present, late, absent, permission, exceptions, rate };
+  return { total, present, late, absent, permission, exceptions, rate, isClosed: false, closedReason: null };
 }
 
 export default async function DashboardPage() {
@@ -74,11 +82,16 @@ export default async function DashboardPage() {
           <p className="page-subtitle">{today}</p>
         </div>
         <div style={{
-          background: "var(--bg-surface)", border: "1px solid var(--border)",
+          background: stats.isClosed ? "var(--bg-surface-2)" : "var(--bg-surface)", 
+          border: "1px solid var(--border)",
           borderRadius: 10, padding: "8px 16px", fontSize: 13,
           color: "var(--text-secondary)", boxShadow: "var(--shadow-sm)",
         }}>
-          <span style={{ fontWeight: 600, color: "var(--accent)" }}>{stats.rate}%</span> attendance rate today
+          {stats.isClosed ? (
+            <span style={{ fontWeight: 600 }}>School Closed</span>
+          ) : (
+            <><span style={{ fontWeight: 600, color: "var(--accent)" }}>{stats.rate}%</span> attendance rate today</>
+          )}
         </div>
       </div>
 
@@ -103,35 +116,54 @@ export default async function DashboardPage() {
 
       {/* Attendance progress bar */}
       <div className="card" style={{ padding: "20px 24px", marginBottom: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Today&apos;s Attendance Progress</span>
-          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            {stats.present + stats.late + stats.permission} / {stats.total} students accounted for
-          </span>
-        </div>
-        <div style={{ height: 8, background: "var(--border)", borderRadius: 999, overflow: "hidden" }}>
-          <div style={{
-            height: "100%", borderRadius: 999,
-            background: "linear-gradient(90deg, var(--accent), #06b6d4)",
-            width: `${stats.rate}%`,
-            transition: "width 0.6s ease",
-          }} />
-        </div>
-        <div className="flex flex-wrap gap-3 md:gap-5 mt-3">
-          {[
-            { label: "Present", value: stats.present, color: "var(--success-text)", bg: "var(--success-light)" },
-            { label: "Late", value: stats.late, color: "var(--warning-text)", bg: "var(--warning-light)" },
-            { label: "Permission", value: stats.permission, color: "var(--purple-text)", bg: "var(--purple-light)" },
-            { label: "Absent", value: stats.absent, color: "var(--danger-text)", bg: "var(--danger-light)" },
-          ].map(({ label, value, color, bg }) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
-              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                <span style={{ fontWeight: 600, color }}>{value}</span> {label}
+        {stats.isClosed ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "10px 0" }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "50%", background: "var(--bg-surface-2)",
+              display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12
+            }}>
+              <AlertTriangle size={24} color="var(--text-muted)" />
+            </div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+              School is Closed Today
+            </h3>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+              Reason: {stats.closedReason}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Today&apos;s Attendance Progress</span>
+              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                {stats.present + stats.late + stats.permission} / {stats.total} students accounted for
               </span>
             </div>
-          ))}
-        </div>
+            <div style={{ height: 8, background: "var(--border)", borderRadius: 999, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 999,
+                background: "linear-gradient(90deg, var(--accent), #06b6d4)",
+                width: `${stats.rate}%`,
+                transition: "width 0.6s ease",
+              }} />
+            </div>
+            <div className="flex flex-wrap gap-3 md:gap-5 mt-3">
+              {[
+                { label: "Present", value: stats.present, color: "var(--success-text)", bg: "var(--success-light)" },
+                { label: "Late", value: stats.late, color: "var(--warning-text)", bg: "var(--warning-light)" },
+                { label: "Permission", value: stats.permission, color: "var(--purple-text)", bg: "var(--purple-light)" },
+                { label: "Absent", value: stats.absent, color: "var(--danger-text)", bg: "var(--danger-light)" },
+              ].map(({ label, value, color, bg }) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                    <span style={{ fontWeight: 600, color }}>{value}</span> {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Quick actions */}

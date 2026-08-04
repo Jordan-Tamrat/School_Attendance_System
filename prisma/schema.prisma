@@ -105,7 +105,15 @@ model SchoolSettings {
   doorOpensTime    String   @default("07:00")
   doorClosesTime   String   @default("07:30")
   lateThresholdMin Int      @default(15)
+  academicYearStart DateTime? @db.Date
+  academicYearEnd   DateTime? @db.Date
   updatedAt        DateTime @updatedAt
+}
+
+model Holiday {
+  id   String   @id @default(uuid())
+  name String
+  date DateTime @db.Date @unique
 }
 
 enum Role {

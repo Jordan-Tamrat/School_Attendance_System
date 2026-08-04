@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
+import { getInstructionalDays } from "@/lib/calendar";
 
 export async function GET(req: NextRequest) {
   const { error, session } = await requireAuth();
@@ -66,7 +67,29 @@ export async function GET(req: NextRequest) {
         recordedBy: { select: { fullName: true } },
       },
     });
-    return NextResponse.json(records);
+
+    const settings = await prisma.schoolSettings.findUnique({ where: { id: "default" } });
+    
+    let totalInstructionalDays = 0;
+    if (settings?.academicYearStart) {
+      const endCalcDate = settings.academicYearEnd && new Date() > settings.academicYearEnd 
+        ? settings.academicYearEnd 
+        : new Date();
+      totalInstructionalDays = await getInstructionalDays(settings.academicYearStart, endCalcDate);
+    }
+
+    const present = records.filter(r => r.status === "present").length;
+    const late = records.filter(r => r.status === "late").length;
+    const permission = records.filter(r => r.status === "permission").length;
+    
+    const validPresence = present + late + permission;
+    const absent = totalInstructionalDays > 0 ? Math.max(0, totalInstructionalDays - validPresence) : 0;
+    const rate = totalInstructionalDays > 0 ? Math.round((validPresence / totalInstructionalDays) * 100) : 0;
+
+    return NextResponse.json({
+      records,
+      stats: { totalInstructionalDays, present, late, permission, absent, rate }
+    });
   }
 
 
