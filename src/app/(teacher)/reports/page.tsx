@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Printer, BarChart2, Search, Edit2, X, CheckCircle } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
 
@@ -56,7 +56,17 @@ export default function ReportsPage() {
   const [editNote, setEditNote] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [studentStats, setStudentStats] = useState<any>(null);
+  
+  const [classes, setClasses] = useState<any[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
+  const [schoolName, setSchoolName] = useState<string>("");
+  
   const { toast, show: showToast, hide: hideToast } = useToast();
+
+  useEffect(() => {
+    fetch("/api/classes").then(r => r.json()).then(data => setClasses(Array.isArray(data) ? data : []));
+    fetch("/api/settings").then(r => r.json()).then(data => setSchoolName(data.schoolName || ""));
+  }, []);
 
   async function searchStudents() {
     if (!studentSearch.trim()) return;
@@ -67,7 +77,12 @@ export default function ReportsPage() {
   async function fetchReport() {
     setLoading(true);
     const params = new URLSearchParams({ type });
-    if (type === "daily" || type === "absent") params.set("date", date);
+    if (type === "daily" || type === "absent") {
+      params.set("date", date);
+      if (selectedClassId && selectedClassId !== "all") {
+        params.set("classId", selectedClassId);
+      }
+    }
     if (type === "student" && selectedStudent) params.set("studentId", selectedStudent.id);
     const res = await fetch(`/api/reports?${params}`);
     const data = await res.json();
@@ -123,11 +138,33 @@ export default function ReportsPage() {
 
       {/* Global Print Styles */}
       <style>{`
+        .print-only { display: none; }
         @media print {
           @page { margin: 0; }
           body { margin: 1.6cm; }
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
         }
       `}</style>
+
+      {/* Print Header */}
+      <div className="print-only" style={{ marginBottom: 32, borderBottom: "2px solid #000", paddingBottom: 16 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 8px 0" }}>{schoolName || "Attendance Report"}</h1>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+          <div>
+            <strong>Report:</strong> {typeLabels[type]} <br/>
+            <strong>Date:</strong> {new Date(date).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", month: "short", day: "numeric", year: "numeric" })}
+          </div>
+          <div style={{ textAlign: "right" }}>
+            {selectedClassId !== "all" && (type === "daily" || type === "absent") && (
+              <><strong>Class:</strong> {classes.find(c => c.id === selectedClassId)?.grade}-{classes.find(c => c.id === selectedClassId)?.section}<br/></>
+            )}
+            {type === "student" && selectedStudent && (
+              <><strong>Student:</strong> {selectedStudent.firstName} {selectedStudent.lastName} (#{selectedStudent.studentNumber})</>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Filter bar */}
       <div className="card no-print" style={{ padding: "20px 24px", marginBottom: 24 }}>
@@ -155,10 +192,21 @@ export default function ReportsPage() {
           </div>
 
           {(type === "daily" || type === "absent") && (
-            <div>
-              <label className="label">Date</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" style={{ width: "auto" }} />
-            </div>
+            <>
+              <div>
+                <label className="label">Date</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" style={{ width: "auto" }} />
+              </div>
+              <div>
+                <label className="label">Class Filter</label>
+                <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="input" style={{ width: "auto" }}>
+                  <option value="all">All Classes</option>
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>Grade {c.grade}-{c.section}</option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
 
           {type === "student" && (
@@ -322,6 +370,7 @@ export default function ReportsPage() {
                 <tr>
                   {type !== "student" && <th>Student</th>}
                   <th>Date</th>
+                  <th>Check-In</th>
                   <th>Status</th>
                   <th>Method</th>
                   {type === "student" && <th>Note</th>}
@@ -346,6 +395,9 @@ export default function ReportsPage() {
                       )}
                       <td style={{ color: "var(--text-secondary)" }}>
                         {new Date(r.date).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })}
+                      </td>
+                      <td style={{ color: "var(--text-secondary)" }}>
+                        {r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—"}
                       </td>
                       <td>
                         <span style={{

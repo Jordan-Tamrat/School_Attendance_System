@@ -40,7 +40,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile Top Bar */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border-b border-white/10">
+      <div className="md:hidden print:hidden flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border-b border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
             <GraduationCap size={20} color="#fff" />
@@ -64,7 +64,7 @@ export default function Sidebar() {
       )}
 
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-[240px] bg-[var(--bg-sidebar)] flex flex-col shrink-0 border-r border-white/10
+        print:hidden fixed inset-y-0 left-0 z-50 w-[240px] bg-[var(--bg-sidebar)] flex flex-col shrink-0 border-r border-white/10
         transition-transform duration-300 ease-in-out md:static md:translate-x-0
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
