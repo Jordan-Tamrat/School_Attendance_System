@@ -6,6 +6,8 @@ interface QueuedRecord {
   id: string;
   qrCodeData: string;
   clientTimestamp: string;
+  exceptionType?: string;
+  exceptionNotes?: string;
 }
 
 async function resolveStatus(scanTime: Date): Promise<"present" | "late" | "early"> {
@@ -42,12 +44,37 @@ export async function POST(req: NextRequest) {
 
   for (const record of records) {
     try {
+      // If this record was already flagged as an exception locally, just log it!
+      if (record.exceptionType) {
+        await prisma.scanException.create({
+          data: {
+            qrCodeData: record.qrCodeData,
+            scannedById: session!.user.id,
+            exceptionType: record.exceptionType,
+            notes: record.exceptionNotes || "Logged offline",
+          },
+        });
+        results.synced++;
+        continue;
+      }
+
       const student = await prisma.student.findUnique({
         where: { qrCodeData: record.qrCodeData },
       });
 
-      if (!student || !student.isActive) {
-        results.failed++;
+      if (!student) {
+        await prisma.scanException.create({
+          data: { qrCodeData: record.qrCodeData, scannedById: session!.user.id, exceptionType: "unknown_qr", notes: "Caught during offline sync" },
+        });
+        results.synced++; // Mark as synced so we don't retry forever
+        continue;
+      }
+      
+      if (!student.isActive) {
+        await prisma.scanException.create({
+          data: { qrCodeData: record.qrCodeData, scannedById: session!.user.id, exceptionType: "inactive_student", notes: "Caught during offline sync" },
+        });
+        results.synced++;
         continue;
       }
 
@@ -66,6 +93,23 @@ export async function POST(req: NextRequest) {
           },
         });
         results.failed++;
+        continue;
+      }
+
+      const existing = await prisma.attendanceRecord.findUnique({
+        where: { studentId_date: { studentId: student.id, date } },
+      });
+
+      if (existing) {
+        await prisma.scanException.create({
+          data: {
+            qrCodeData: record.qrCodeData,
+            scannedById: session!.user.id,
+            exceptionType: "duplicate_scan",
+            notes: `Caught during sync: Already marked ${existing.status}`,
+          },
+        });
+        results.synced++; // Successfully logged the exception, don't retry
         continue;
       }
 

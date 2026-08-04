@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { queueScan } from "@/services/offlineQueue";
+import { queueScan, downloadOfflineSnapshot, offlineDB } from "@/services/offlineQueue";
 import { CheckCircle, XCircle, WifiOff, QrCode, StopCircle, Clock, UserX, RefreshCw, AlertTriangle } from "lucide-react";
 
 interface ScanResult {
@@ -67,7 +67,12 @@ export default function ScannerPage() {
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
-    window.addEventListener("online", () => setIsOnline(true));
+    if (navigator.onLine) downloadOfflineSnapshot();
+    
+    window.addEventListener("online", () => {
+      setIsOnline(true);
+      downloadOfflineSnapshot();
+    });
     window.addEventListener("offline", () => setIsOnline(false));
     
     const onSynced = () => {
@@ -113,8 +118,61 @@ export default function ScannerPage() {
     const time = new Date().toLocaleTimeString();
 
     if (!isOnline) {
+      const student = await offlineDB.roster.get(qrCodeData);
+      let r: ScanResult;
+      
+      if (!student) {
+        isBlocked.current = true;
+        playErrorSound();
+        r = { type: "error", message: "Unknown QR code", time };
+        setBlockedException({ type: "unknown", title: "Unknown QR Code", desc: "This QR code is not recognized by the system." });
+        await queueScan(qrCodeData, "unknown_qr", "Offline scan rejected: Unknown QR");
+      } else if (!student.isActive) {
+        isBlocked.current = true;
+        playErrorSound();
+        r = { type: "error", message: "Inactive student", time };
+        setBlockedException({ type: "inactive", title: "Inactive Student", desc: "This student's account is suspended or inactive." });
+        await queueScan(qrCodeData, "inactive_student", "Offline scan rejected: Inactive student");
+      } else if (new Date(student.qrExpiresAt) < new Date()) {
+        isBlocked.current = true;
+        playErrorSound();
+        r = { type: "expired", message: "ID Card Expired", time };
+        setBlockedException({ type: "expired", title: "Expired ID Card", desc: "This student's ID card is no longer valid." });
+        await queueScan(qrCodeData, "expired_qr", "Offline scan rejected: Expired ID Card");
+      } else {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const locallyQueued = await offlineDB.queue.filter(q => q.qrCodeData === qrCodeData && q.clientTimestamp.startsWith(todayStr)).count();
+        if (student.hasScannedToday || locallyQueued > 0) {
+          isBlocked.current = true;
+          playErrorSound();
+          r = { type: "duplicate", message: "Already scanned today", time };
+          setBlockedException({ type: "duplicate", title: "Duplicate Scan", desc: "This student was already marked present today." });
+          await queueScan(qrCodeData, "duplicate_scan", "Offline scan rejected: Duplicate");
+        } else {
+          const settings = await offlineDB.settings.get("default");
+          if (settings && settings.doorOpensTime) {
+            const now = new Date();
+            const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+            if (currentTime < settings.doorOpensTime) {
+              isBlocked.current = true;
+              playErrorSound();
+              r = { type: "error", message: "Too early to check in", time };
+              setBlockedException({ type: "too_early", title: "Too Early", desc: "The student is trying to check in before the doors open." });
+              await queueScan(qrCodeData, "too_early", "Offline scan rejected: Too early");
+            }
+          }
+        }
+      }
+
+      if (isBlocked.current) {
+        setLatest(r!);
+        setHistory((h) => [r!, ...h].slice(0, 20));
+        setTimeout(() => { if (!isBlocked.current) { setLatest(null); cooldown.current = false; lastScanned.current = ""; } }, 4000);
+        return;
+      }
+
       await queueScan(qrCodeData);
-      const r = { type: "offline" as const, message: "Queued for sync (offline)", time };
+      r = { type: "offline" as const, message: "Queued for sync (offline)", time };
       setLatest(r);
       setHistory((h) => [r, ...h].slice(0, 20));
       setTimeout(() => { cooldown.current = false; lastScanned.current = ""; }, 3000);
