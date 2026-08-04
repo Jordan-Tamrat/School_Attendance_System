@@ -24,10 +24,13 @@ export async function queueScan(qrCodeData: string) {
     clientTimestamp: new Date().toISOString(),
     synced: false,
   });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("scanQueued"));
+  }
 }
 
 export async function syncPendingScans() {
-  const pending = await offlineDB.queue.where("synced").equals(0).toArray();
+  const pending = await offlineDB.queue.filter(r => !r.synced).toArray();
   if (!pending.length) return { synced: 0 };
 
   const res = await fetch("/api/attendance/sync", {
@@ -39,6 +42,9 @@ export async function syncPendingScans() {
   if (res.ok) {
     const ids = pending.map((r) => r.id!).filter(Boolean);
     await offlineDB.queue.bulkUpdate(ids.map((id) => ({ key: id, changes: { synced: true } })));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("scansSynced"));
+    }
     return await res.json();
   }
 

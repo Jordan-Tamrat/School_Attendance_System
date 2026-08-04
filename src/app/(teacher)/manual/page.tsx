@@ -41,7 +41,14 @@ export default function ManualEntryPage() {
 
 
   useEffect(() => {
-    fetch("/api/classes").then((r) => r.json()).then(setClasses);
+    fetch("/api/classes")
+      .then(async (r) => {
+        if (!r.ok) return [];
+        const text = await r.text();
+        return text ? JSON.parse(text) : [];
+      })
+      .then(setClasses)
+      .catch((e) => console.error("Failed to load classes:", e));
   }, []);
 
   async function searchStudents() {

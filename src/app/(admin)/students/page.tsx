@@ -242,13 +242,19 @@ export default function StudentsPage() {
 
   useEffect(() => {
     fetchStudents();
-    fetch("/api/classes").then((r) => r.json()).then(setClasses);
-    fetch("/api/settings").then((r) => r.json()).then((s) => {
+    fetch("/api/classes")
+      .then(async (r) => { if (!r.ok) return []; const t = await r.text(); return t ? JSON.parse(t) : []; })
+      .then(setClasses)
+      .catch(console.error);
+      
+    fetch("/api/settings")
+      .then(async (r) => { if (!r.ok) return {}; const t = await r.text(); return t ? JSON.parse(t) : {}; })
+      .then((s) => {
       const code = s.schoolCode || "SCH";
       const now = new Date();
       const ethYear = now.getFullYear() - (now.getMonth() >= 8 && now.getDate() >= 11 ? 7 : 8);
       setIdPreview(`${code}/001/${ethYear}`);
-    });
+    }).catch(console.error);
   }, []);
 
   async function fetchStudents() {

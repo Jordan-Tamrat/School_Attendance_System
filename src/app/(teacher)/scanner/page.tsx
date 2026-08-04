@@ -69,7 +69,23 @@ export default function ScannerPage() {
     setIsOnline(navigator.onLine);
     window.addEventListener("online", () => setIsOnline(true));
     window.addEventListener("offline", () => setIsOnline(false));
+    
+    const onSynced = () => {
+      setHistory((h) =>
+        h.map((item) =>
+          item.type === "offline"
+            ? { ...item, type: "success", message: "Synced successfully" }
+            : item
+        )
+      );
+    };
+    window.addEventListener("scansSynced", onSynced);
+    
     fetchAbsent();
+    
+    return () => {
+      window.removeEventListener("scansSynced", onSynced);
+    };
   }, [fetchAbsent]);
 
   async function startScanner() {

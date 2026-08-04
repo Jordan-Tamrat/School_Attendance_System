@@ -1,22 +1,23 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Users, CheckCircle, XCircle, Clock, QrCode, PenLine, AlertTriangle } from "lucide-react";
+import { Users, CheckCircle, XCircle, Clock, QrCode, PenLine, AlertTriangle, FileText } from "lucide-react";
 
 async function getStats(userId: string, role: string) {
   const todayStr = new Date().toLocaleDateString("en-CA");
   const today = new Date(`${todayStr}T00:00:00Z`);
 
-  const [total, present, late, exceptions] = await Promise.all([
+  const [total, present, late, permission, exceptions] = await Promise.all([
     prisma.student.count({ where: { isActive: true } }),
     prisma.attendanceRecord.count({ where: { date: today, status: "present" } }),
     prisma.attendanceRecord.count({ where: { date: today, status: "late" } }),
+    prisma.attendanceRecord.count({ where: { date: today, status: "permission" } }),
     prisma.scanException.count({ where: { resolved: false } }),
   ]);
 
-  const absent = total - present - late;
-  const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
-  return { total, present, late, absent, exceptions, rate };
+  const absent = total - present - late - permission;
+  const rate = total > 0 ? Math.round(((present + late + permission) / total) * 100) : 0;
+  return { total, present, late, absent, permission, exceptions, rate };
 }
 
 export default async function DashboardPage() {
@@ -39,6 +40,10 @@ export default async function DashboardPage() {
     {
       label: "Late Today", value: stats.late, icon: Clock,
       accent: "#d97706", bg: "var(--warning-light)", color: "var(--warning-text)",
+    },
+    {
+      label: "Permission", value: stats.permission, icon: FileText,
+      accent: "#9333ea", bg: "var(--purple-light)", color: "var(--purple-text)",
     },
     {
       label: "Absent Today", value: stats.absent, icon: XCircle,
@@ -78,7 +83,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-7">
         {cards.map(({ label, value, icon: Icon, bg, color }) => (
           <div key={label} className="card" style={{ padding: "20px 22px" }}>
             <div style={{
@@ -101,7 +106,7 @@ export default async function DashboardPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Today&apos;s Attendance Progress</span>
           <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            {stats.present + stats.late} / {stats.total} students checked in
+            {stats.present + stats.late + stats.permission} / {stats.total} students accounted for
           </span>
         </div>
         <div style={{ height: 8, background: "var(--border)", borderRadius: 999, overflow: "hidden" }}>
@@ -116,6 +121,7 @@ export default async function DashboardPage() {
           {[
             { label: "Present", value: stats.present, color: "var(--success-text)", bg: "var(--success-light)" },
             { label: "Late", value: stats.late, color: "var(--warning-text)", bg: "var(--warning-light)" },
+            { label: "Permission", value: stats.permission, color: "var(--purple-text)", bg: "var(--purple-light)" },
             { label: "Absent", value: stats.absent, color: "var(--danger-text)", bg: "var(--danger-light)" },
           ].map(({ label, value, color, bg }) => (
             <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>

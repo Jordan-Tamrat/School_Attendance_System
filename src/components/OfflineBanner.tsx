@@ -10,18 +10,33 @@ export default function OfflineBanner() {
   const [syncing, setSyncing] = useState(false);
 
   async function refreshPending() {
-    const count = await offlineDB.queue.where("synced").equals(0).count();
+    const count = await offlineDB.queue.filter(r => !r.synced).count();
     setPending(count);
   }
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
     refreshPending();
-    const onOnline = async () => { setIsOnline(true); await refreshPending(); };
+    const onOnline = async () => { 
+      setIsOnline(true); 
+      const count = await offlineDB.queue.filter(r => !r.synced).count();
+      setPending(count);
+      if (count > 0) {
+        setSyncing(true);
+        await syncPendingScans();
+        await refreshPending();
+        setSyncing(false);
+      }
+    };
     const onOffline = () => setIsOnline(false);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
-    return () => { window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline); };
+    window.addEventListener("scanQueued", refreshPending);
+    return () => { 
+      window.removeEventListener("online", onOnline); 
+      window.removeEventListener("offline", onOffline); 
+      window.removeEventListener("scanQueued", refreshPending);
+    };
   }, []);
 
   async function handleSync() {
