@@ -64,3 +64,35 @@ export async function sendAttendanceAlerts(recipients: EmailRecipient[]) {
     }
   }
 }
+
+export async function sendPasswordResetEmail(email: string, token: string) {
+  if (!process.env.RESEND_API_KEY) return;
+  const resetLink = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`;
+  
+  await resend.emails.send({
+    from: SENDER_EMAIL,
+    to: email,
+    subject: "EduAttend - Password Reset Request",
+    html: `<p>Hello,</p>
+           <p>We received a request to reset your password for EduAttend.</p>
+           <p>Click the link below to set a new password. This link will expire in 15 minutes.</p>
+           <p><a href="${resetLink}">Reset Password</a></p>
+           <p>If you did not request this, please ignore this email.</p>`,
+  }).catch(console.error);
+}
+
+export async function sendWelcomeEmail(email: string, name: string, tempPass: string) {
+  if (!process.env.RESEND_API_KEY) return;
+  const loginLink = `${process.env.NEXTAUTH_URL}/login`;
+  
+  await resend.emails.send({
+    from: SENDER_EMAIL,
+    to: email,
+    subject: "Welcome to EduAttend",
+    html: `<p>Hello ${name},</p>
+           <p>An administrator has created an EduAttend staff account for you.</p>
+           <p><strong>Your Temporary Password:</strong> ${tempPass}</p>
+           <p>Please log in and we recommend you change this password immediately via the 'Forgot Password' link.</p>
+           <p><a href="${loginLink}">Log In to EduAttend</a></p>`,
+  }).catch(console.error);
+}

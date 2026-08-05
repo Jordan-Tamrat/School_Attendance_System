@@ -5,7 +5,7 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
-  const isPublic = pathname === "/login";
+  const isPublic = pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password";
   if (isPublic) return NextResponse.next();
 
   if (!session) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Save, Settings, Trash2 } from "lucide-react";
+import { Calendar, Save, Settings, Trash2, User } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
 
 interface SchoolSettings {
@@ -38,11 +38,15 @@ export default function SettingsPage() {
   const [fetching, setFetching] = useState(true);
   const { toast, show: showToast, hide: hideToast } = useToast();
 
+  const [myEmail, setMyEmail] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+
   function loadData() {
     Promise.all([
       fetch("/api/settings").then(r => r.json()),
-      fetch("/api/settings/holidays").then(r => r.json())
-    ]).then(([settingsData, holidaysData]) => {
+      fetch("/api/settings/holidays").then(r => r.json()),
+      fetch("/api/users/me").then(r => r.json())
+    ]).then(([settingsData, holidaysData, userData]) => {
       setForm({
         schoolName: settingsData.schoolName,
         schoolCode: settingsData.schoolCode,
@@ -53,6 +57,7 @@ export default function SettingsPage() {
         academicYearEnd: settingsData.academicYearEnd ? settingsData.academicYearEnd.split("T")[0] : "",
       });
       setHolidays(holidaysData);
+      if (userData?.email) setMyEmail(userData.email);
       setFetching(false);
     });
   }
@@ -112,6 +117,24 @@ export default function SettingsPage() {
     showToast("Holiday deleted");
   }
 
+  async function handleEmailUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailLoading(true);
+    const res = await fetch("/api/users/me", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: myEmail }),
+    });
+    const data = await res.json();
+    setEmailLoading(false);
+
+    if (res.ok) {
+      showToast("Recovery email updated successfully");
+    } else {
+      showToast(data.error ?? "Failed to update email", "error");
+    }
+  }
+
   if (fetching) {
     return (
       <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
@@ -128,6 +151,7 @@ export default function SettingsPage() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "32px", maxWidth: 1100, alignItems: "start" }}>
+        {/* School Configuration Card */}
         <div className="card" style={{ padding: 28 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
             <div style={{
@@ -244,9 +268,11 @@ export default function SettingsPage() {
           </form>
         </div>
 
-        {/* Academic Calendar Settings */}
-        <div className="card" style={{ padding: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        {/* Right Column Wrapper */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+          {/* Academic Calendar Settings */}
+          <div className="card" style={{ padding: 28 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
             <div style={{
               width: 40, height: 40, borderRadius: 10,
               background: "var(--purple-light)",
@@ -345,9 +371,50 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+
+        {/* My Account Card */}
+        <div className="card" style={{ padding: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: "var(--accent-light)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <User size={18} color="var(--accent-text)" />
+            </div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                My Account
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
+                Configure your personal recovery options
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleEmailUpdate} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div>
+              <label className="label">Recovery Email Address *</label>
+              <input
+                type="email"
+                value={myEmail}
+                onChange={(e) => setMyEmail(e.target.value)}
+                required
+                placeholder="admin@school.edu"
+                className="input"
+              />
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                Used for password resets and critical system alerts.
+              </p>
+            </div>
+            <button type="submit" disabled={emailLoading} className="btn-primary" style={{ width: "fit-content" }}>
+              <Save size={15} /> {emailLoading ? "Saving..." : "Save Email"}
+            </button>
+          </form>
+        </div>
+        </div>
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   );
 }
-

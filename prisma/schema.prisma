@@ -16,6 +16,10 @@ model User {
   createdAt    DateTime  @default(now())
   lastLogin    DateTime?
 
+  email            String    @unique @default("test@gmail.com")
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
+
 
   attendanceRecorded AttendanceRecord[] @relation("RecordedBy")
   exceptionsLogged   ScanException[]    @relation("ScannedBy")

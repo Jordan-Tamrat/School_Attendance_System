@@ -25,6 +25,7 @@ export default function UsersPage() {
     username: "",
     fullName: "",
     role: "teacher",
+    email: "",
     password: "",
   });
 
@@ -50,7 +51,7 @@ export default function UsersPage() {
 
     if (res.ok) {
       setShowForm(false);
-      setForm({ username: "", fullName: "", role: "teacher", password: "" });
+      setForm({ username: "", fullName: "", role: "teacher", email: "", password: "" });
       fetchUsers();
       showToast("Staff account created successfully");
     } else {
@@ -63,7 +64,7 @@ export default function UsersPage() {
   function closeForm() {
     setShowForm(false);
     setError("");
-    setForm({ username: "", fullName: "", role: "teacher", password: "" });
+    setForm({ username: "", fullName: "", role: "teacher", email: "", password: "" });
   }
 
   const admins  = users.filter((u) => u.role === "admin");
@@ -170,6 +171,21 @@ export default function UsersPage() {
                 />
                 <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                   Lowercase letters and numbers only, no spaces
+                </p>
+              </div>
+
+              <div>
+                <label className="label">Email Address *</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                  placeholder="e.g. teacher@school.edu"
+                  className="input"
+                />
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                  They will receive a welcome email to this address
                 </p>
               </div>
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { GraduationCap, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,21 +32,15 @@ export default function LoginPage() {
 
   return (
     <div
-      style={{ minHeight: "100vh", display: "flex", background: "var(--bg-base)" }}
+      className="flex flex-col lg:flex-row min-h-screen"
+      style={{ background: "var(--bg-base)" }}
     >
       {/* Left panel — branding */}
       <div
         style={{
-          flex: "0 0 420px",
           background: "linear-gradient(160deg, #0f172a 0%, #1e3a5f 60%, #1d4ed8 100%)",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: "60px 48px",
-          position: "relative",
-          overflow: "hidden",
         }}
-        className="hidden lg:flex"
+        className="w-full lg:w-[420px] shrink-0 flex flex-col justify-center relative overflow-hidden py-10 px-6 lg:py-[60px] lg:px-[48px]"
       >
         {/* Decorative circles */}
         <div style={{
@@ -103,20 +98,7 @@ export default function LoginPage() {
         justifyContent: "center",
         padding: "40px 24px",
       }}>
-        <div style={{ width: "100%", maxWidth: 400 }}>
-          {/* Mobile logo */}
-          <div className="lg:hidden" style={{ textAlign: "center", marginBottom: 32 }}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              width: 56, height: 56, borderRadius: 14,
-              background: "var(--accent)", marginBottom: 12,
-            }}>
-              <GraduationCap size={28} color="#fff" />
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)" }}>EduAttend</h1>
-          </div>
-
-          <div style={{ marginBottom: 32 }}>
+        <div style={{ width: "100%", maxWidth: 400 }}>          <div style={{ marginBottom: 32 }}>
             <h2 style={{
               fontSize: 26, fontWeight: 700,
               color: "var(--text-primary)", marginBottom: 8, letterSpacing: "-0.3px",
@@ -142,7 +124,15 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="label">Password</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <label className="label" style={{ marginBottom: 0 }}>Password</label>
+                <span 
+                  onClick={(e) => { e.preventDefault(); window.location.href = '/forgot-password'; }}
+                  style={{ fontSize: 13, color: "var(--accent-text)", fontWeight: 600, cursor: "pointer" }}
+                >
+                  Forgot password?
+                </span>
+              </div>
               <div style={{ position: "relative" }}>
                 <input
                   name="password"
