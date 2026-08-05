@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import { z } from "zod";
+import { sendAttendanceAlerts, EmailRecipient } from "@/lib/email";
 
 const ScanSchema = z.object({
   qrCodeData: z.string().min(1),
@@ -118,6 +119,17 @@ export async function POST(req: NextRequest) {
     },
     include: { student: true },
   });
+
+  if (status === "late" && student.parentEmail) {
+    const emailsToSend: EmailRecipient[] = [{
+      parentEmail: student.parentEmail,
+      parentName: student.parentName || "Parent",
+      studentName: `${student.firstName} ${student.lastName}`,
+      status: "late",
+      time: scanTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }];
+    sendAttendanceAlerts(emailsToSend).catch(console.error);
+  }
 
   return NextResponse.json({
     success: true,

@@ -59,7 +59,7 @@ export default function ScannerPage() {
 
   const fetchAbsent = useCallback(async () => {
     setAbsentLoading(true);
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toLocaleDateString("en-CA");
     const res = await fetch(`/api/reports?type=absent&date=${today}`);
     if (res.ok) setAbsentList(await res.json());
     setAbsentLoading(false);
@@ -140,7 +140,7 @@ export default function ScannerPage() {
         setBlockedException({ type: "expired", title: "Expired ID Card", desc: "This student's ID card is no longer valid." });
         await queueScan(qrCodeData, "expired_qr", "Offline scan rejected: Expired ID Card");
       } else {
-        const todayStr = new Date().toISOString().split("T")[0];
+        const todayStr = new Date().toLocaleDateString("en-CA");
         const locallyQueued = await offlineDB.queue.filter(q => q.qrCodeData === qrCodeData && q.clientTimestamp.startsWith(todayStr)).count();
         if (student.hasScannedToday || locallyQueued > 0) {
           isBlocked.current = true;

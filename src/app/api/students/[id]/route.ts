@@ -11,7 +11,8 @@ const EditSchema = z.object({
   gender: z.string().optional(),
   parentPhone: z.string()
     .regex(/^\+251[0-9]{9}$/, "Phone must be in Ethiopian format: +251 followed by 9 digits"),
-  parentEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  parentName: z.string().min(1, "Parent Name is required"),
+  parentEmail: z.string().email("Invalid email address"),
   address: z.string().optional(),
   photoUrl: z.string().min(1, "Student photo is required"),
   isActive: z.boolean().optional(),
@@ -60,6 +61,7 @@ export async function PUT(
       dateOfBirth: parsed.data.dateOfBirth ? new Date(parsed.data.dateOfBirth) : null,
       gender: parsed.data.gender,
       parentPhone: parsed.data.parentPhone,
+      parentName: parsed.data.parentName,
       parentEmail: parsed.data.parentEmail,
       address: parsed.data.address,
       photoUrl: parsed.data.photoUrl,

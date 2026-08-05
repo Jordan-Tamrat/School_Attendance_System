@@ -12,7 +12,8 @@ const StudentSchema = z.object({
   gender: z.string().optional(),
   parentPhone: z.string()
     .regex(/^\+251[0-9]{9}$/, "Phone must be in Ethiopian format: +251 followed by 9 digits"),
-  parentEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  parentName: z.string().min(1, "Parent Name is required"),
+  parentEmail: z.string().email("Invalid email address"),
   address: z.string().optional(),
   photoUrl: z.string().min(1, "Student photo is required"),
 });
@@ -25,7 +26,8 @@ const EditSchema = z.object({
   gender: z.string().optional(),
   parentPhone: z.string()
     .regex(/^\+251[0-9]{9}$/, "Phone must be in Ethiopian format: +251 followed by 9 digits"),
-  parentEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  parentName: z.string().min(1, "Parent Name is required"),
+  parentEmail: z.string().email("Invalid email address"),
   address: z.string().optional(),
   photoUrl: z.string().min(1, "Student photo is required"),
   isActive: z.boolean().optional(),
@@ -109,6 +111,7 @@ export async function POST(req: NextRequest) {
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
       gender: data.gender,
       parentPhone: data.parentPhone,
+      parentName: data.parentName,
       parentEmail: data.parentEmail,
       address: data.address,
       qrCodeData,

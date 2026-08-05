@@ -41,6 +41,7 @@ model Student {
   studentNumber String   @unique
   firstName     String
   lastName      String
+  parentName    String?
   dateOfBirth   DateTime?
   gender        String?
   photoUrl      String?
@@ -107,6 +108,7 @@ model SchoolSettings {
   lateThresholdMin Int      @default(15)
   academicYearStart DateTime? @db.Date
   academicYearEnd   DateTime? @db.Date
+  lastAbsenceEmailDate String?
   updatedAt        DateTime @updatedAt
 }
 

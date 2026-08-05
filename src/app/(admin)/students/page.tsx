@@ -12,6 +12,7 @@ interface Student {
   qrCodeImage: string;
   photoUrl: string | null;
   parentPhone: string;
+  parentName: string | null;
   parentEmail: string | null;
   address: string | null;
   dateOfBirth: string | null;
@@ -34,6 +35,7 @@ interface StudentForm {
   dateOfBirth: string;
   gender: string;
   address: string;
+  parentName: string;
   parentEmail: string;
 }
 
@@ -172,7 +174,12 @@ function StudentFormFields({
       </div>
 
       <div>
-        <label className="label">Parent Email</label>
+        <label className="label">Parent Name <span style={{ color: "var(--danger)" }}>*</span></label>
+        <input value={form.parentName} onChange={(e) => setForm({ ...form, parentName: e.target.value })} required className="input" placeholder="Parent Full Name" />
+      </div>
+
+      <div>
+        <label className="label">Parent Email <span style={{ color: "var(--danger)" }}>*</span></label>
         <input
           value={form.parentEmail}
           onChange={(e) => { setForm({ ...form, parentEmail: e.target.value }); setEmailError(""); }}
@@ -199,7 +206,7 @@ function StudentFormFields({
   );
 }
 
-const emptyForm: StudentForm = { firstName: "", lastName: "", classId: "", dateOfBirth: "", gender: "", address: "", parentEmail: "" };
+const emptyForm: StudentForm = { firstName: "", lastName: "", classId: "", dateOfBirth: "", gender: "", address: "", parentName: "", parentEmail: "" };
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -313,6 +320,7 @@ export default function StudentsPage() {
       dateOfBirth: s.dateOfBirth ? s.dateOfBirth.split("T")[0] : "",
       gender: s.gender ?? "",
       address: s.address ?? "",
+      parentName: s.parentName ?? "",
       parentEmail: s.parentEmail ?? "",
     });
     setPhone(s.parentPhone ?? "+251");

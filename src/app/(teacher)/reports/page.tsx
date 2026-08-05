@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Printer, BarChart2, Search, Edit2, X, CheckCircle } from "lucide-react";
+import { Printer, BarChart2, Search, Edit2, X, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
 
 type ReportType = "daily" | "absent" | "student";
@@ -43,7 +43,7 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 
 export default function ReportsPage() {
   const [type, setType] = useState<ReportType>("daily");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(new Date().toLocaleDateString("en-CA"));
   const [studentSearch, setStudentSearch] = useState("");
   const [studentResults, setStudentResults] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -55,6 +55,8 @@ export default function ReportsPage() {
   const [editStatus, setEditStatus] = useState("");
   const [editNote, setEditNote] = useState("");
   const [editLoading, setEditLoading] = useState(false);
+  const [notifyLoading, setNotifyLoading] = useState(false);
+  const [showNotifyDialog, setShowNotifyDialog] = useState(false);
   const [studentStats, setStudentStats] = useState<any>(null);
   
   const [classes, setClasses] = useState<any[]>([]);
@@ -118,6 +120,20 @@ export default function ReportsPage() {
     showToast("Attendance record updated");
   }
 
+  async function handleNotifyAbsent() {
+    setShowNotifyDialog(false);
+    setNotifyLoading(true);
+    const res = await fetch("/api/reports/notify-absent", { method: "POST" });
+    const data = await res.json();
+    setNotifyLoading(false);
+    
+    if (res.ok) {
+      showToast(`Success: Sent ${data.count} emails.`);
+    } else {
+      showToast(data.error || "Failed to notify parents", "error");
+    }
+  }
+
   const typeLabels: Record<ReportType, string> = {
     daily: "Daily Attendance",
     absent: "Absent Students",
@@ -131,9 +147,17 @@ export default function ReportsPage() {
           <h1 className="page-title">Reports</h1>
           <p className="page-subtitle no-print">Generate and export attendance reports</p>
         </div>
-        <button onClick={() => window.print()} className="btn-secondary no-print">
-          <Printer size={15} /> Print Report
-        </button>
+        <div style={{ display: "flex", gap: 8 }} className="no-print">
+          {type === "absent" && (
+            <button onClick={() => setShowNotifyDialog(true)} disabled={notifyLoading} className="btn-primary">
+              {notifyLoading ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <AlertCircle size={15} />}
+              Notify Absent Parents
+            </button>
+          )}
+          <button onClick={() => window.print()} className="btn-secondary">
+            <Printer size={15} /> Print Report
+          </button>
+        </div>
       </div>
 
       {/* Global Print Styles */}
@@ -526,6 +550,38 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+
+      {/* Notify Absent Confirmation Modal */}
+      {showNotifyDialog && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={() => setShowNotifyDialog(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)" }} />
+          <div style={{ background: "var(--bg-surface)", borderRadius: 16, width: "100%", maxWidth: 400, position: "relative", zIndex: 10, overflow: "hidden", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-surface-2)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--danger)" }}>
+                <AlertCircle size={20} />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>Confirm Notification</h3>
+              </div>
+              <button onClick={() => setShowNotifyDialog(false)} className="btn-secondary" style={{ padding: 4, background: "transparent", border: "none" }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: 24 }}>
+              <p style={{ margin: 0, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                This action will instantly send an absence email alert to the parents of all active students who have <strong>not checked in today</strong>.
+              </p>
+              <div style={{ marginTop: 24, display: "flex", gap: 10 }}>
+                <button type="button" onClick={() => setShowNotifyDialog(false)} className="btn-secondary" style={{ flex: 1 }}>
+                  Cancel
+                </button>
+                <button type="button" onClick={handleNotifyAbsent} className="btn-primary" style={{ flex: 1, background: "var(--danger)" }}>
+                  Proceed & Notify
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   );

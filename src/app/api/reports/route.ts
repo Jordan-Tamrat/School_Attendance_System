@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") ?? "daily";
-  const date = searchParams.get("date") ?? new Date().toISOString().split("T")[0];
+  const date = searchParams.get("date") ?? new Date().toLocaleDateString("en-CA");
   const classId = searchParams.get("classId");
   const studentId = searchParams.get("studentId");
 

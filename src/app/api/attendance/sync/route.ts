@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
+import { sendAttendanceAlerts, EmailRecipient } from "@/lib/email";
+import { ExceptionType } from "@prisma/client";
 
 interface QueuedRecord {
   id: string;
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   const results = { synced: 0, failed: 0, errors: [] as string[] };
+  const emailsToSend: EmailRecipient[] = [];
 
   for (const record of records) {
     try {
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
           data: {
             qrCodeData: record.qrCodeData,
             scannedById: session!.user.id,
-            exceptionType: record.exceptionType,
+            exceptionType: record.exceptionType as ExceptionType,
             notes: record.exceptionNotes || "Logged offline",
           },
         });
@@ -113,7 +116,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      await prisma.attendanceRecord.upsert({
+      const createdRecord = await prisma.attendanceRecord.upsert({
         where: { studentId_date: { studentId: student.id, date } },
         update: { syncedAt: new Date() },
         create: {
@@ -127,12 +130,31 @@ export async function POST(req: NextRequest) {
           clientTimestamp: new Date(record.clientTimestamp),
           syncedAt: new Date(),
         },
+        include: { student: true },
       });
+
+      // Send email if student is late and we just created the record
+      // If we updated an existing record, we skip email to prevent spam.
+      // But we checked `existing` above, so it's always a create here.
+      if (status === "late" && student.parentEmail) {
+        emailsToSend.push({
+          parentEmail: student.parentEmail,
+          parentName: student.parentName || "Parent",
+          studentName: `${student.firstName} ${student.lastName}`,
+          status: "late",
+          time: scanTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        });
+      }
 
       results.synced++;
     } catch {
       results.failed++;
     }
+  }
+
+  if (emailsToSend.length > 0) {
+    // Send in background without blocking response
+    sendAttendanceAlerts(emailsToSend).catch(console.error);
   }
 
   return NextResponse.json(results);

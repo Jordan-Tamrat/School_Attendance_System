@@ -45,7 +45,6 @@ async function main() {
       grade: "10",
       section: "A",
       academicYear: "2024-2025",
-      teacherId: teacher.id,
     },
   });
 

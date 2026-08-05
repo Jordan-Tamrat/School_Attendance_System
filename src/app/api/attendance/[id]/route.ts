@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import { z } from "zod";
+import { sendAttendanceAlerts, EmailRecipient } from "@/lib/email";
 
 const UpdateSchema = z.object({
   status: z.enum(["present", "absent", "late", "permission"]),
@@ -36,9 +37,21 @@ export async function PATCH(
       recordedById: session!.user.id,
     },
     include: {
-      student: { select: { firstName: true, lastName: true } },
+      student: { select: { firstName: true, lastName: true, parentEmail: true, parentName: true } },
     },
   });
+
+  if ((parsed.data.status === "late" || parsed.data.status === "permission") && record.student.parentEmail) {
+    const emailsToSend: EmailRecipient[] = [{
+      parentEmail: record.student.parentEmail,
+      parentName: record.student.parentName || "Parent",
+      studentName: `${record.student.firstName} ${record.student.lastName}`,
+      status: parsed.data.status,
+      time: record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined,
+      note: parsed.data.permissionNote,
+    }];
+    sendAttendanceAlerts(emailsToSend).catch(console.error);
+  }
 
   return NextResponse.json(record);
 }
