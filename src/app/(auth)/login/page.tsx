@@ -94,11 +94,13 @@ export default function LoginPage() {
       <div style={{
         flex: 1,
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        flexDirection: "column",
         padding: "40px 24px",
       }}>
-        <div style={{ width: "100%", maxWidth: 400 }}>          <div style={{ marginBottom: 32 }}>
+        {/* Top Spacer to push form down to center */}
+        <div style={{ flex: 1 }} />
+
+        <div style={{ width: "100%", maxWidth: 400, margin: "0 auto" }}>          <div style={{ marginBottom: 32 }}>
             <h2 style={{
               fontSize: 26, fontWeight: 700,
               color: "var(--text-primary)", marginBottom: 8, letterSpacing: "-0.3px",
@@ -192,10 +194,44 @@ export default function LoginPage() {
             Contact your administrator if you need access.
           </p>
         </div>
+
+        {/* Bottom Spacer to push footer to bottom */}
+        <div style={{ flex: 1, minHeight: 40 }} />
+
+        <div style={{ textAlign: "center", paddingBottom: 20 }}>
+            <a 
+              href="https://yordanos-tamrat.vercel.app/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="portfolio-link"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "var(--text-secondary)",
+                textDecoration: "none",
+                padding: "6px 12px",
+                borderRadius: "20px",
+                background: "var(--bg-surface-2)",
+                border: "1px solid var(--border)",
+                transition: "all 0.3s ease",
+              }}
+            >
+              Developed by <span style={{ color: "var(--accent)", fontWeight: 700 }}>Y.T</span>
+            </a>
+        </div>
       </div>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        .portfolio-link:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+          border-color: var(--accent) !important;
+          color: var(--text-primary) !important;
+        }
       `}</style>
     </div>
   );
