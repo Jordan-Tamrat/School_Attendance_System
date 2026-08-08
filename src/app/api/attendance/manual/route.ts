@@ -15,7 +15,7 @@ const ManualSchema = z.object({
 );
 
 export async function POST(req: NextRequest) {
-  const { error, session } = await requireAuth();
+  const { error, session } = await requireAuth("admin");
   if (error) return error;
 
   const body = await req.json();

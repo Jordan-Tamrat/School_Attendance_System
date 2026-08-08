@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Printer, BarChart2, Search, Edit2, X, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { Toast, useToast } from "@/components/Toast";
+import { useSession } from "next-auth/react";
 
 type ReportType = "daily" | "absent" | "student";
 
@@ -42,6 +43,8 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 };
 
 export default function ReportsPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user.role === "admin";
   const [type, setType] = useState<ReportType>("daily");
   const [date, setDate] = useState(new Date().toLocaleDateString("en-CA"));
   const [studentSearch, setStudentSearch] = useState("");
@@ -66,8 +69,15 @@ export default function ReportsPage() {
   const { toast, show: showToast, hide: hideToast } = useToast();
 
   useEffect(() => {
-    fetch("/api/classes").then(r => r.json()).then(data => setClasses(Array.isArray(data) ? data : []));
-    fetch("/api/settings").then(r => r.json()).then(data => setSchoolName(data.schoolName || ""));
+    fetch("/api/classes")
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setClasses(Array.isArray(data) ? data : []))
+      .catch(() => setClasses([]));
+      
+    fetch("/api/settings")
+      .then(r => r.ok ? r.json() : ({} as any))
+      .then(data => setSchoolName(data.schoolName || ""))
+      .catch(() => setSchoolName(""));
   }, []);
 
   async function searchStudents() {
@@ -86,20 +96,28 @@ export default function ReportsPage() {
       }
     }
     if (type === "student" && selectedStudent) params.set("studentId", selectedStudent.id);
-    const res = await fetch(`/api/reports?${params}`);
-    const data = await res.json();
-    if (type === "absent") {
-      setAbsentStudents(Array.isArray(data) ? data : []);
+    try {
+      const res = await fetch(`/api/reports?${params}`);
+      if (!res.ok) throw new Error("Server error");
+      const data = await res.json();
+      if (type === "absent") {
+        setAbsentStudents(Array.isArray(data) ? data : []);
+        setRecords([]);
+        setStudentStats(null);
+      } else if (type === "student") {
+        setRecords(data.records || []);
+        setStudentStats(data.stats || null);
+        setAbsentStudents([]);
+      } else {
+        setRecords(Array.isArray(data) ? data : []);
+        setAbsentStudents([]);
+        setStudentStats(null);
+      }
+    } catch (error) {
+      setAbsentStudents([]);
       setRecords([]);
       setStudentStats(null);
-    } else if (type === "student") {
-      setRecords(data.records || []);
-      setStudentStats(data.stats || null);
-      setAbsentStudents([]);
-    } else {
-      setRecords(Array.isArray(data) ? data : []);
-      setAbsentStudents([]);
-      setStudentStats(null);
+      showToast("Unable to fetch data. You might be offline.", "error");
     }
     setLoading(false);
     setGenerated(true);
@@ -148,7 +166,7 @@ export default function ReportsPage() {
           <p className="page-subtitle no-print">Generate and export attendance reports</p>
         </div>
         <div style={{ display: "flex", gap: 8 }} className="no-print">
-          {type === "absent" && (
+          {type === "absent" && isAdmin && (
             <button onClick={() => setShowNotifyDialog(true)} disabled={notifyLoading} className="btn-primary">
               {notifyLoading ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <AlertCircle size={15} />}
               Notify Absent Parents
@@ -398,7 +416,7 @@ export default function ReportsPage() {
                   <th>Status</th>
                   <th>Method</th>
                   {type === "student" && <th>Note</th>}
-                  <th className="no-print">Update</th>
+                  {isAdmin && <th className="no-print">Update</th>}
                 </tr>
               </thead>
               <tbody>
@@ -440,24 +458,26 @@ export default function ReportsPage() {
                           {r.auditNote ?? r.permissionNote ?? "—"}
                         </td>
                       )}
-                      <td className="no-print">
-                        <div title={!isEditable ? "Cannot edit past records" : ""} style={{ display: "inline-block" }}>
-                          <button
-                            onClick={() => { setEditRecord(r); setEditStatus(r.status); setEditNote(r.permissionNote ?? ""); }}
-                            disabled={!isEditable}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 5,
-                              background: "var(--bg-surface-2)", border: "1px solid var(--border)",
-                              borderRadius: 6, fontWeight: 500,
-                              color: "var(--text-secondary)", cursor: isEditable ? "pointer" : "not-allowed",
-                              opacity: isEditable ? 1 : 0.5,
-                            }}
-                            className="px-2 py-1.5 md:px-2.5 md:py-1.5 text-[11px] md:text-xs justify-center md:justify-start"
-                          >
-                            <Edit2 size={12} /> Edit
-                          </button>
-                        </div>
-                      </td>
+                      {isAdmin && (
+                        <td className="no-print">
+                          <div title={!isEditable ? "Cannot edit past records" : ""} style={{ display: "inline-block" }}>
+                            <button
+                              onClick={() => { setEditRecord(r); setEditStatus(r.status); setEditNote(r.permissionNote ?? ""); }}
+                              disabled={!isEditable}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 5,
+                                background: "var(--bg-surface-2)", border: "1px solid var(--border)",
+                                borderRadius: 6, fontWeight: 500,
+                                color: "var(--text-secondary)", cursor: isEditable ? "pointer" : "not-allowed",
+                                opacity: isEditable ? 1 : 0.5,
+                              }}
+                              className="px-2 py-1.5 md:px-2.5 md:py-1.5 text-[11px] md:text-xs justify-center md:justify-start"
+                            >
+                              <Edit2 size={12} /> Edit
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

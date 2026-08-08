@@ -34,8 +34,13 @@ export default function ClassesPage() {
   }, []);
 
   async function fetchClasses() {
-    const res = await fetch("/api/classes");
-    setClasses(await res.json());
+    try {
+      const res = await fetch("/api/classes");
+      if (!res.ok) throw new Error("Offline");
+      setClasses(await res.json());
+    } catch {
+      setClasses([]);
+    }
   }
 
   async function handleCreate(e: React.FormEvent) {

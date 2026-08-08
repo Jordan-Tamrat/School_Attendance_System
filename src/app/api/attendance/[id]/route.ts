@@ -17,7 +17,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error, session } = await requireAuth();
+  const { error, session } = await requireAuth("admin");
   if (error) return error;
 
   const { id } = await params;

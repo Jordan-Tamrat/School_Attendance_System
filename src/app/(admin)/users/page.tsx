@@ -32,8 +32,13 @@ export default function UsersPage() {
   useEffect(() => { fetchUsers(); }, []);
 
   async function fetchUsers() {
-    const res = await fetch("/api/users");
-    setUsers(await res.json());
+    try {
+      const res = await fetch("/api/users");
+      if (!res.ok) throw new Error("Offline");
+      setUsers(await res.json());
+    } catch {
+      setUsers([]);
+    }
   }
 
   async function handleCreate(e: React.FormEvent) {

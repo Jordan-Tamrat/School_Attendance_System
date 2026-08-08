@@ -15,12 +15,12 @@ import { useState } from "react";
 const teacherLinks = [
   { href: "/dashboard", label: "Dashboard",   icon: LayoutDashboard },
   { href: "/scanner",   label: "Scanner",     icon: QrCode },
-  { href: "/manual",    label: "Manual Entry", icon: PenLine },
   { href: "/reports",   label: "Reports",     icon: BarChart2 },
 ];
 
 const adminLinks = [
   { href: "/dashboard",  label: "Dashboard",   icon: LayoutDashboard },
+  { href: "/manual",     label: "Manual Entry",icon: PenLine },
   { href: "/reports",    label: "Reports",     icon: BarChart2 },
   { href: "/students",   label: "Students",    icon: Users },
   { href: "/classes",    label: "Classes",     icon: BookOpen },

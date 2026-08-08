@@ -33,8 +33,13 @@ export default function ExceptionsPage() {
   useEffect(() => { fetchExceptions(); }, []);
 
   async function fetchExceptions() {
-    const res = await fetch("/api/exceptions?resolved=false");
-    setExceptions(await res.json());
+    try {
+      const res = await fetch("/api/exceptions?resolved=false");
+      if (!res.ok) throw new Error("Offline");
+      setExceptions(await res.json());
+    } catch {
+      setExceptions([]);
+    }
   }
 
   async function resolve(id: string) {

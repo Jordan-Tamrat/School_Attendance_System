@@ -9,23 +9,27 @@ async function getStats(userId: string, role: string) {
   const todayStr = new Date().toLocaleDateString("en-CA");
   const today = new Date(`${todayStr}T00:00:00Z`);
 
-  const total = await prisma.student.count({ where: { isActive: true } });
-  const exceptions = await prisma.scanException.count({ where: { resolved: false } });
+  try {
+    const total = await prisma.student.count({ where: { isActive: true } });
+    const exceptions = await prisma.scanException.count({ where: { resolved: false } });
 
-  const dayStatus = await getDayStatus(today);
-  if (dayStatus.isClosed) {
-    return { total, present: 0, late: 0, absent: 0, permission: 0, exceptions, rate: 0, isClosed: true, closedReason: dayStatus.reason };
+    const dayStatus = await getDayStatus(today);
+    if (dayStatus.isClosed) {
+      return { total, present: 0, late: 0, absent: 0, permission: 0, exceptions, rate: 0, isClosed: true, closedReason: dayStatus.reason, offline: false };
+    }
+
+    const [present, late, permission] = await Promise.all([
+      prisma.attendanceRecord.count({ where: { date: today, status: "present" } }),
+      prisma.attendanceRecord.count({ where: { date: today, status: "late" } }),
+      prisma.attendanceRecord.count({ where: { date: today, status: "permission" } }),
+    ]);
+
+    const absent = total - present - late - permission;
+    const rate = total > 0 ? Math.round(((present + late + permission) / total) * 100) : 0;
+    return { total, present, late, absent, permission, exceptions, rate, isClosed: false, closedReason: null, offline: false };
+  } catch (error) {
+    return { total: 0, present: 0, late: 0, absent: 0, permission: 0, exceptions: 0, rate: 0, isClosed: false, closedReason: null, offline: true };
   }
-
-  const [present, late, permission] = await Promise.all([
-    prisma.attendanceRecord.count({ where: { date: today, status: "present" } }),
-    prisma.attendanceRecord.count({ where: { date: today, status: "late" } }),
-    prisma.attendanceRecord.count({ where: { date: today, status: "permission" } }),
-  ]);
-
-  const absent = total - present - late - permission;
-  const rate = total > 0 ? Math.round(((present + late + permission) / total) * 100) : 0;
-  return { total, present, late, absent, permission, exceptions, rate, isClosed: false, closedReason: null };
 }
 
 export default async function DashboardPage() {
@@ -87,7 +91,9 @@ export default async function DashboardPage() {
           borderRadius: 10, padding: "8px 16px", fontSize: 13,
           color: "var(--text-secondary)", boxShadow: "var(--shadow-sm)",
         }}>
-          {stats.isClosed ? (
+          {stats.offline ? (
+            <span style={{ fontWeight: 600, color: "var(--danger)" }}>Offline Mode</span>
+          ) : stats.isClosed ? (
             <span style={{ fontWeight: 600 }}>School Closed</span>
           ) : (
             <><span style={{ fontWeight: 600, color: "var(--accent)" }}>{stats.rate}%</span> attendance rate today</>
@@ -116,7 +122,22 @@ export default async function DashboardPage() {
 
       {/* Attendance progress bar */}
       <div className="card" style={{ padding: "20px 24px", marginBottom: 28 }}>
-        {stats.isClosed ? (
+        {stats.offline ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "10px 0" }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "50%", background: "var(--danger-light)",
+              display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12
+            }}>
+              <AlertTriangle size={24} color="var(--danger)" />
+            </div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+              Offline Mode
+            </h3>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+              The server cannot reach the database. Some features are disabled.
+            </p>
+          </div>
+        ) : stats.isClosed ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "10px 0" }}>
             <div style={{
               width: 48, height: 48, borderRadius: "50%", background: "var(--bg-surface-2)",

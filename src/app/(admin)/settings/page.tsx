@@ -43,9 +43,9 @@ export default function SettingsPage() {
 
   function loadData() {
     Promise.all([
-      fetch("/api/settings").then(r => r.json()),
-      fetch("/api/settings/holidays").then(r => r.json()),
-      fetch("/api/users/me").then(r => r.json())
+      fetch("/api/settings").then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      fetch("/api/settings/holidays").then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch("/api/users/me").then(r => r.ok ? r.json() : {}).catch(() => ({}))
     ]).then(([settingsData, holidaysData, userData]) => {
       setForm({
         schoolName: settingsData.schoolName,

@@ -265,12 +265,16 @@ export default function StudentsPage() {
   }, []);
 
   async function fetchStudents() {
-    let url = "/api/students?";
-    if (search.trim()) url += `search=${encodeURIComponent(search)}&`;
-    if (selectedClassId) url += `classId=${selectedClassId}`;
-    
-    const res = await fetch(url);
-    setStudents(await res.json());
+    try {
+      let url = "/api/students?";
+      if (search.trim()) url += `search=${encodeURIComponent(search)}&`;
+      if (selectedClassId) url += `classId=${selectedClassId}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch");
+      setStudents(await res.json());
+    } catch {
+      setStudents([]);
+    }
   }
 
   // Refetch when class filter changes
