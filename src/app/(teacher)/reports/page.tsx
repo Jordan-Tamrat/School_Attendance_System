@@ -5,7 +5,7 @@ import { Printer, BarChart2, Search, Edit2, X, CheckCircle, Loader2, AlertCircle
 import { Toast, useToast } from "@/components/Toast";
 import { useSession } from "next-auth/react";
 
-type ReportType = "daily" | "absent" | "student";
+type ReportType = "daily" | "absent" | "student" | "monthly";
 
 interface AttendanceRecord {
   id: string;
@@ -47,11 +47,13 @@ export default function ReportsPage() {
   const isAdmin = session?.user.role === "admin";
   const [type, setType] = useState<ReportType>("daily");
   const [date, setDate] = useState(new Date().toLocaleDateString("en-CA"));
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [studentSearch, setStudentSearch] = useState("");
   const [studentResults, setStudentResults] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([]);
+  const [monthlyStats, setMonthlyStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
@@ -88,12 +90,18 @@ export default function ReportsPage() {
 
   async function fetchReport() {
     setLoading(true);
+    setRecords([]);
+    setAbsentStudents([]);
+    setMonthlyStats([]);
+    setStudentStats(null);
     const params = new URLSearchParams({ type });
     if (type === "daily" || type === "absent") {
       params.set("date", date);
-      if (selectedClassId && selectedClassId !== "all") {
-        params.set("classId", selectedClassId);
-      }
+      if (selectedClassId && selectedClassId !== "all") params.set("classId", selectedClassId);
+    }
+    if (type === "monthly") {
+      params.set("month", month);
+      if (selectedClassId && selectedClassId !== "all") params.set("classId", selectedClassId);
     }
     if (type === "student" && selectedStudent) params.set("studentId", selectedStudent.id);
     try {
@@ -102,16 +110,13 @@ export default function ReportsPage() {
       const data = await res.json();
       if (type === "absent") {
         setAbsentStudents(Array.isArray(data) ? data : []);
-        setRecords([]);
-        setStudentStats(null);
       } else if (type === "student") {
         setRecords(data.records || []);
         setStudentStats(data.stats || null);
-        setAbsentStudents([]);
+      } else if (type === "monthly") {
+        setMonthlyStats(Array.isArray(data) ? data : []);
       } else {
         setRecords(Array.isArray(data) ? data : []);
-        setAbsentStudents([]);
-        setStudentStats(null);
       }
     } catch (error) {
       setAbsentStudents([]);
@@ -138,6 +143,76 @@ export default function ReportsPage() {
     showToast("Attendance record updated");
   }
 
+  function handleExportCSV() {
+    let csvRows: string[] = [];
+    let filename = `${type}_report.csv`;
+    
+    // Helper to format class name
+    const className = selectedClassId && selectedClassId !== "all" 
+      ? classes.find(c => c.id === selectedClassId)?.grade + "-" + classes.find(c => c.id === selectedClassId)?.section 
+      : "all-classes";
+
+    if (type === "monthly") {
+      if (monthlyStats.length === 0) return showToast("No data to export");
+      filename = `monthly_summary_${month}_${className}.csv`;
+      csvRows.push("Student ID,First Name,Last Name,Grade,Section,Present,Late,Permission,Absent");
+      monthlyStats.forEach(s => {
+        const id = s.student.studentNumber?.trim() || "";
+        const fn = s.student.firstName?.trim() || "";
+        const ln = s.student.lastName?.trim() || "";
+        const gr = s.student.class?.grade?.trim() || "";
+        const sec = s.student.class?.section?.trim() || "";
+        csvRows.push(`"${id}","${fn}","${ln}","${gr}","${sec}","${s.present}","${s.late}","${s.permission}","${s.absent}"`);
+      });
+    } else if (type === "absent") {
+      if (absentStudents.length === 0) return showToast("No data to export");
+      filename = `absent_students_${date}_${className}.csv`;
+      csvRows.push("Student ID,First Name,Last Name,Grade,Section");
+      absentStudents.forEach(s => {
+        const id = s.studentNumber?.trim() || "";
+        const fn = s.firstName?.trim() || "";
+        const ln = s.lastName?.trim() || "";
+        const gr = s.class?.grade?.trim() || "";
+        const sec = s.class?.section?.trim() || "";
+        csvRows.push(`"${id}","${fn}","${ln}","${gr}","${sec}"`);
+      });
+    } else if (type === "student") {
+      if (records.length === 0) return showToast("No data to export");
+      filename = `student_history_${selectedStudent?.firstName?.trim()}_${selectedStudent?.lastName?.trim()}.csv`;
+      csvRows.push("Date,Student ID,First Name,Last Name,Check-In Time,Status,Method,Note");
+      records.forEach(r => {
+        const d = new Date(r.date).toISOString().split("T")[0];
+        const t = r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+        const sId = r.student?.studentNumber?.trim() || "";
+        const fName = r.student?.firstName?.trim() || "";
+        const lName = r.student?.lastName?.trim() || "";
+        const note = (r.auditNote || r.permissionNote || "").trim();
+        csvRows.push(`"${d}","${sId}","${fName}","${lName}","${t}","${r.status}","${r.entryMethod}","${note.replace(/"/g, '""')}"`);
+      });
+    } else {
+      if (records.length === 0) return showToast("No data to export");
+      filename = `daily_attendance_${date}_${className}.csv`;
+      csvRows.push("Date,Student ID,First Name,Last Name,Check-In Time,Status,Method,Note");
+      records.forEach(r => {
+        const d = new Date(r.date).toISOString().split("T")[0];
+        const t = r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+        const sId = r.student?.studentNumber?.trim() || "";
+        const fName = r.student?.firstName?.trim() || "";
+        const lName = r.student?.lastName?.trim() || "";
+        const note = (r.auditNote || r.permissionNote || "").trim();
+        csvRows.push(`"${d}","${sId}","${fName}","${lName}","${t}","${r.status}","${r.entryMethod}","${note.replace(/"/g, '""')}"`);
+      });
+    }
+    
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function handleNotifyAbsent() {
     setShowNotifyDialog(false);
     setNotifyLoading(true);
@@ -156,6 +231,7 @@ export default function ReportsPage() {
     daily: "Daily Attendance",
     absent: "Absent Students",
     student: "Student History",
+    monthly: "Monthly Summary",
   };
 
   return (
@@ -172,8 +248,8 @@ export default function ReportsPage() {
               Notify Absent Parents
             </button>
           )}
-          <button onClick={() => window.print()} className="btn-secondary">
-            <Printer size={15} /> Print Report
+          <button onClick={handleExportCSV} className="btn-secondary">
+            <Search size={15} /> Export CSV
           </button>
         </div>
       </div>
@@ -214,10 +290,10 @@ export default function ReportsPage() {
           <div>
             <label className="label">Report Type</label>
               <div className="flex gap-2 w-full md:w-auto">
-                {(["daily", "absent", "student"] as ReportType[]).map((t) => (
+                {(["daily", "absent", "student", "monthly"] as ReportType[]).map((t) => (
                   <button
                     key={t}
-                    onClick={() => { setType(t); setGenerated(false); setRecords([]); setAbsentStudents([]); setStudentStats(null); }}
+                    onClick={() => { setType(t); setGenerated(false); setRecords([]); setAbsentStudents([]); setMonthlyStats([]); setStudentStats(null); }}
                     style={{
                       borderRadius: 8, fontWeight: 500,
                       cursor: "pointer", transition: "all 0.15s",
@@ -239,16 +315,28 @@ export default function ReportsPage() {
                 <label className="label">Date</label>
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" style={{ width: "auto" }} />
               </div>
+            </>
+          )}
+
+          {type === "monthly" && (
+            <>
               <div>
-                <label className="label">Class Filter</label>
-                <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="input" style={{ width: "auto" }}>
-                  <option value="all">All Classes</option>
-                  {classes.map(c => (
-                    <option key={c.id} value={c.id}>Grade {c.grade}-{c.section}</option>
-                  ))}
-                </select>
+                <label className="label">Month</label>
+                <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="input" style={{ width: "auto" }} />
               </div>
             </>
+          )}
+
+          {(type === "daily" || type === "absent" || type === "monthly") && (
+            <div>
+              <label className="label">Class Filter</label>
+              <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="input" style={{ width: "auto" }}>
+                <option value="all">All Classes</option>
+                {classes.map(c => (
+                  <option key={c.id} value={c.id}>Grade {c.grade}-{c.section}</option>
+                ))}
+              </select>
+            </div>
           )}
 
           {type === "student" && (
@@ -274,7 +362,7 @@ export default function ReportsPage() {
                   </button>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, position: "relative" }}>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input
                       value={studentSearch}
@@ -290,6 +378,7 @@ export default function ReportsPage() {
                   </div>
                   {studentResults.length > 0 && (
                     <div style={{
+                      position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 50, width: "100%",
                       background: "var(--bg-surface)", border: "1px solid var(--border)",
                       borderRadius: 8, overflow: "hidden", boxShadow: "var(--shadow-md)",
                     }}>
@@ -334,7 +423,7 @@ export default function ReportsPage() {
           <p style={{ fontSize: 14 }}>Select a report type and click Generate</p>
         </div>
       )}
-      {generated && records.length === 0 && absentStudents.length === 0 && !loading && (
+      {generated && records.length === 0 && absentStudents.length === 0 && monthlyStats.length === 0 && !loading && (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
           <p style={{ fontSize: 14 }}>No records found for the selected criteria.</p>
         </div>
@@ -363,6 +452,44 @@ export default function ReportsPage() {
                     <td style={{ fontWeight: 500 }}>{s.firstName} {s.lastName}</td>
                     <td style={{ color: "var(--text-secondary)" }}>#{s.studentNumber}</td>
                     <td style={{ color: "var(--text-secondary)" }}>Grade {s.class.grade}-{s.class.section}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {type === "monthly" && monthlyStats.length > 0 && (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>
+              {monthlyStats.length} student{monthlyStats.length !== 1 ? "s" : ""} in summary
+            </span>
+          </div>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Student No.</th>
+                  <th>Class</th>
+                  <th>Present</th>
+                  <th>Late</th>
+                  <th>Permission</th>
+                  <th>Absent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyStats.map((s: any) => (
+                  <tr key={s.student.id}>
+                    <td style={{ fontWeight: 500 }}>{s.student.firstName} {s.student.lastName}</td>
+                    <td style={{ color: "var(--text-secondary)" }}>#{s.student.studentNumber}</td>
+                    <td style={{ color: "var(--text-secondary)" }}>Grade {s.student.class.grade}-{s.student.class.section}</td>
+                    <td style={{ color: "var(--success-text)", fontWeight: 600 }}>{s.present}</td>
+                    <td style={{ color: "var(--warning-text)", fontWeight: 600 }}>{s.late}</td>
+                    <td style={{ color: "var(--purple-text)", fontWeight: 600 }}>{s.permission}</td>
+                    <td style={{ color: "var(--danger-text)", fontWeight: 600 }}>{s.absent}</td>
                   </tr>
                 ))}
               </tbody>

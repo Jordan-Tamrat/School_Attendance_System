@@ -10,8 +10,10 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") ?? "daily";
   const date = searchParams.get("date") ?? new Date().toLocaleDateString("en-CA");
+  const month = searchParams.get("month");
   const classId = searchParams.get("classId");
   const studentId = searchParams.get("studentId");
+  const exportCsv = searchParams.get("export") === "csv";
 
   const scopedClassId = classId;
 
@@ -93,6 +95,73 @@ export async function GET(req: NextRequest) {
   }
 
 
+  if (type === "monthly" && month) {
+    // month format: "YYYY-MM"
+    const startDate = new Date(`${month}-01T00:00:00Z`);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 1);
+
+    const allStudents = await prisma.student.findMany({
+      where: {
+        isActive: true,
+        ...(scopedClassId ? { classId: scopedClassId } : {}),
+      },
+      include: { class: true },
+    });
+
+    const records = await prisma.attendanceRecord.findMany({
+      where: {
+        date: { gte: startDate, lt: endDate },
+        ...(scopedClassId ? { classId: scopedClassId } : {}),
+      },
+    });
+
+    if (exportCsv) {
+      // Export RAW 60k records for the month
+      const headers = ["Student ID", "First Name", "Last Name", "Date", "Check-In Time", "Status", "Method", "Note"];
+      const studentMap = new Map(allStudents.map(s => [s.id, s]));
+      
+      const csvRows = [headers.join(",")];
+      for (const r of records) {
+        const s = studentMap.get(r.studentId);
+        if (!s) continue;
+        const formattedDate = new Date(r.date).toISOString().split("T")[0];
+        const time = r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+        const note = r.auditNote || r.permissionNote || "";
+        const row = [
+          s.studentNumber, s.firstName, s.lastName, formattedDate, time,
+          r.status, r.entryMethod, `"${note.replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(","));
+      }
+      return new NextResponse(csvRows.join("\n"), {
+        headers: { "Content-Type": "text/csv", "Content-Disposition": `attachment; filename="monthly_raw_${month}.csv"` }
+      });
+    }
+
+    // Otherwise, return AGGREGATED data for the UI
+    const studentStats = new Map();
+    for (const s of allStudents) {
+      studentStats.set(s.id, {
+        student: s,
+        present: 0, late: 0, permission: 0, absent: 0, total: 0
+      });
+    }
+
+    for (const r of records) {
+      const stat = studentStats.get(r.studentId);
+      if (stat) {
+        if (r.status === "present") stat.present++;
+        else if (r.status === "late") stat.late++;
+        else if (r.status === "permission") stat.permission++;
+        else if (r.status === "absent") stat.absent++;
+        stat.total++;
+      }
+    }
+
+    const aggregated = Array.from(studentStats.values());
+    return NextResponse.json(aggregated);
+  }
 
   return NextResponse.json({ error: "Invalid report type" }, { status: 400 });
 }
